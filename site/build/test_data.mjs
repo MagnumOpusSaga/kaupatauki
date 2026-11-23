@@ -12,7 +12,7 @@ for (const s of st) {
   ok(s.src && s.src.name && s.src.url && s.src.fetched, 'lähde ' + s.slug);
   const wk = s.week || {};
   for (const [d, r] of Object.entries(wk)) for (const [o, c] of r) ok(re.test(o) && re.test(c), `aika ${s.slug} ${d} ${o}-${c}`);
-  for (const e of s.exceptions || []) for (const [o, c] of e.r) ok(re.test(o) && re.test(c), `poikkeus ${s.slug} ${e.date}`);
+  for (const e of s.exceptions || []) { ok(Array.isArray(e.r) || !!e.text || e.level === 'u', `poikkeus ilman aikaa ${s.slug} ${e.date}`); for (const [o, c] of e.r || []) ok(re.test(o) && re.test(c), `poikkeus ${s.slug} ${e.date}`); }
   if (s.src.official && Object.keys(wk).length < 7) noHours++;
   if (!s.src.official && !s.oh) noHours++;
   if (s.flyer) ok(/^https:\/\//.test(s.flyer.url), 'lehtilinkki ' + s.slug);

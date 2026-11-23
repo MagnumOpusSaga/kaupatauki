@@ -110,12 +110,12 @@ function layout({ title, desc, canonical, body, jsonld = [], extraHead = '' }) {
 <title>${esc(title)}</title><meta name="description" content="${esc(desc)}">${robots}
 <link rel="canonical" href="${esc(url(canonical))}">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(url(canonical))}"><meta property="og:type" content="website"><meta property="og:locale" content="fi_FI"><meta property="og:image" content="${url('/og.png')}">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0a6b45">
-<link rel="stylesheet" href="/style.css?v=${SITE.version}">${SITE.bingVerify ? `<meta name="msvalidate.01" content="${esc(SITE.bingVerify)}">` : ''}
+<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/icon-96.png" type="image/png" sizes="96x96"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0b7a4b">
+<link rel="stylesheet" href="/style.css?v=${SITE.version}">${SITE.bingVerify ? `<meta name="msvalidate.01" content="${esc(SITE.bingVerify)}">` : ''}${SITE.adsenseClient ? `<meta name="google-adsense-account" content="${esc(SITE.adsenseClient)}">` : ''}
 ${jsonld.map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`).join('')}${extraHead}
 </head><body>
 ${SITE.preview ? '<div class="preview">Esikatselu – sivusto ei ole vielä julkinen eikä hakukoneissa.</div>' : ''}
-<header class="top"><a class="logo" href="/"><span class="dot"></span>Kaupat auki</a>
+<header class="top"><a class="logo" href="/"><img src="/favicon.svg" alt="" width="28" height="28">Kaupat auki</a>
 <nav><a href="/auki/${HOL.find(h => h.top)?.slug || HOL[0].slug}/">${esc(HOL.find(h => h.top)?.name || HOL[0].name)}</a><a href="/tarjouslehdet/">Tarjouslehdet</a><a href="/kaupungit/">Kaupungit</a></nav></header>
 <main>${body}</main>
 <div class="dock"><div class="sheet" id="sheet" hidden><div class="sheethead"><b id="sheettitle">Tulokset</b><button type="button" id="sheetclose" class="x" aria-label="Sulje tulokset">${ICON.x}</button></div><ul class="list" id="results"></ul></div>
@@ -401,7 +401,7 @@ const topHol = HOL.find(h => h.top) || HOL[0];
 put('/', layout({
   title: 'Kaupat auki – mitkä kaupat ovat auki nyt? Aukioloajat ja tarjouslehdet',
   desc: `Kaikkien Suomen ruokakauppojen aukioloajat tänään, juhlapyhien poikkeusajat (${topHol.name.toLowerCase()} ${fiDate(topHol.iso)}) ja linkit tämän viikon tarjouslehtiin.`,
-  canonical: '/', jsonld: [{ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Kaupat auki', url: url('/') }],
+  canonical: '/', jsonld: [{ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Kaupat auki', alternateName: 'kaupatauki.fi', url: url('/') }, { '@context': 'https://schema.org', '@type': 'Organization', name: 'Kaupat auki', url: url('/'), logo: url('/logo.png'), email: SITE.email }],
   body: `<section class="hero"><h1>Mitkä kaupat ovat auki nyt?</h1>
 <p>${stores.length.toLocaleString('fi')} ruokakaupan aukioloajat ja juhlapyhien poikkeusajat.</p>
 <button type="button" class="btn big" id="nearbtn">${ICON.nav}Näytä lähimmät auki olevat kaupat</button>
@@ -457,5 +457,6 @@ const sitemapUrls = pages.filter(x => !x.p.endsWith('.html')).map(x => x.p);
 const chunks = []; for (let i = 0; i < sitemapUrls.length; i += 40000) chunks.push(sitemapUrls.slice(i, i + 40000));
 chunks.forEach((c, i) => fs.writeFileSync(path.join(DIST, `sitemap-${i + 1}.xml`), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${c.map(p => `<url><loc>${url(p)}</loc><lastmod>${TODAY}</lastmod></url>`).join('')}</urlset>`));
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${chunks.map((_, i) => `<sitemap><loc>${url(`/sitemap-${i + 1}.xml`)}</loc><lastmod>${TODAY}</lastmod></sitemap>`).join('')}</sitemapindex>`);
+if (SITE.adsenseClient) fs.writeFileSync(path.join(DIST, 'ads.txt'), `google.com, ${SITE.adsenseClient.replace('ca-', '')}, DIRECT, f08c47fec0942fa0\n`);
 fs.writeFileSync(path.join(DIST, 'robots.txt'), SITE.preview ? 'User-agent: *\nDisallow: /\n' : `User-agent: *\nAllow: /\n\nSitemap: ${url('/sitemap.xml')}\n`);
 console.log(JSON.stringify({ today: TODAY, stores: stores.length, kunnat: kunnat.length, pages: pages.length, sitemap: sitemapUrls.length, ohErrors, holidays: HOL.slice(0, 4).map(h => h.slug + ' ' + h.iso) }));
