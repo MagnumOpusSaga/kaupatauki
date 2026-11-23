@@ -1,0 +1,23 @@
+name: Daily update
+on:
+  schedule: [{ cron: '23 2 * * *' }]   # ~04.23 Suomen aikaa (talvella)
+  workflow_dispatch: {}
+concurrency: { group: daily, cancel-in-progress: false }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: pip install shapely
+      - run: cd site && npm ci
+      - run: sh scripts/fetch_all.sh
+      - name: Deploy
+        run: npx -y wrangler@3 pages deploy site/dist --project-name kaupatauki --branch main --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 040aa50827cdfb7dc725e8bc0600c6ca

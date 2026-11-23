@@ -1,0 +1,10 @@
+node_modules/
+site/dist/
+raw/*.html
+raw/*.xml
+raw/s_stores.json
+raw/lidl.json
+raw/tok_all.json
+raw/*.pbf
+raw/osm_tiles/
+*.log
