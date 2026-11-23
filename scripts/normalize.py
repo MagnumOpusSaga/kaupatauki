@@ -241,6 +241,7 @@ for i, (x, t, k, full) in enumerate(alko_osm):
     in_ = {lst: i in h for lst, h in alko_hits.items()}
     full = next((h[i] for h in alko_hits.values() if i in h), full)  # Alkon virallinen myymälänimi, jos tunnistettu
     oh = t.get('opening_hours') or ''
+    if '24/7' in oh: oh = ''  # Alko ei voi olla auki ympäri vuorokauden (alkoholilaki: myynti klo 9–21) → virheellinen OSM-tieto
     used = []
     # Jos OSM:ssä ei ole arkiaikoja, viikonloppusäännöt yksinään tekisivät arjesta "suljettu" → ei lisätä
     if not oh: in_ = {**in_, 'saturday_9_21': False, 'saturday_9_20': False}
