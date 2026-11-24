@@ -330,3 +330,38 @@ main h3 a::after{content:"›";margin-left:8px;color:var(--mut);font-weight:600}
 /* ---------- 14. Alatunniste ---------- */
 footer{line-height:1.55}
 footer a{color:var(--mut)}
+
+/* ===== Desktop (≥1000 px) 24.11.2026: haku ylhäällä, kauppasivu A (kortti + karttapalsta) ===== */
+.store-side .more{display:inline-flex;align-items:center;min-height:44px;font-weight:700;text-decoration:none}
+.mapbox[hidden]{display:none}
+@media (min-width:1000px){
+  body{padding-bottom:0}
+  .top{position:sticky;top:0;z-index:15;min-height:64px;padding:8px max(24px,calc((100% - 1240px)/2 + 32px))}
+  /* hakupalkki yläpalkin keskelle, tulokset aukeavat alaspäin */
+  /* logon (~190 px) jälkeen, navigaation (~380 px) eteen; ei päällekkäin leveydestä riippumatta */
+  .dock{--hp:max(24px,calc((100vw - 1240px)/2 + 32px));top:8px;bottom:auto;left:calc(var(--hp) + 200px);right:calc(var(--hp) + 390px);width:auto;max-width:560px;transform:none;display:flex;flex-direction:column-reverse;z-index:30}
+  .bar{max-width:none;width:100%;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none}
+  .srch{min-height:48px;border-radius:14px;background:#eef2f0;border:1px solid #dbe3de}
+  .loc{width:48px;height:48px;border-radius:14px}
+  .sheet{max-width:none;width:100%;margin:8px 0 0;border:1px solid var(--line);border-radius:18px;max-height:min(70vh,620px);box-shadow:0 18px 40px -12px rgba(20,32,26,.28)}
+  .sheet::before{display:none}
+  main.wide{max-width:1240px;padding:12px 32px 48px}
+  .store-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(380px,460px);gap:28px;align-items:start}
+  .store-main{min-width:0}
+  .store-side{min-width:0;padding-top:4px}
+  .store-side h2{margin-top:18px}
+  .mapbox{position:relative;height:360px;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#e9eee9}
+  .maphint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;margin:0;color:var(--mut);font-size:14px}
+  .tables{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+  .tables h2{margin-top:22px}
+  .tables .hours th{width:auto}
+}
+@media (min-width:1000px) and (max-width:1279px){.top nav a{padding:0 8px;font-size:14px}.dock{right:calc(var(--hp) + 330px)}.tables{grid-template-columns:minmax(0,1fr)}.tables .hours.hol th{width:60%}}
+/* kartan merkit */
+.mpin{display:flex;align-items:center;gap:6px;text-decoration:none;cursor:pointer}
+.mpin .dot{width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);background:#7d8a83;flex:none;transition:transform .12s}
+.mpin.open .dot{background:#0b7a4b}.mpin.soon .dot{background:#8a5300}.mpin.closed .dot{background:#b3261e}
+.mpin.hl .dot,.mpin:hover .dot{transform:scale(1.45)}
+.mpin.main{flex-direction:row;padding:6px 12px 6px 7px;border-radius:999px;background:#14201a;color:#fff;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);margin-bottom:6px}
+.mpin.main .dot{width:14px;height:14px;border-width:2px}
+.maplibregl-ctrl-attrib{font-size:11px}

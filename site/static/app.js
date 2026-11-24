@@ -127,4 +127,42 @@
       openSheet(hits.length ? `${hits.length} kauppaa` : 'Ei osumia'); render(hits.slice(0, 30));
     });
   }
+  // Kauppasivun kartta (vain leveillä näytöillä ≥1000 px): MapLibre + OpenFreeMap, ladataan vasta tarvittaessa
+  const mapEl = document.getElementById('map');
+  if (mapEl && art && window.matchMedia('(min-width:1000px)').matches) {
+    mapEl.hidden = false;
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/vendor/maplibre/maplibre-gl.css'; document.head.appendChild(css);
+    const js = document.createElement('script'); js.src = '/vendor/maplibre/maplibre-gl.js'; js.async = true;
+    js.onerror = () => { mapEl.hidden = true; };
+    js.onload = () => {
+      const lat = +art.dataset.lat, lon = +art.dataset.lon;
+      const map = new maplibregl.Map({ container: mapEl, style: 'https://tiles.openfreemap.org/styles/positron', center: [lon, lat], zoom: 14.5, attributionControl: { compact: false }, cooperativeGestures: true });
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+      mapEl.querySelector('.maphint')?.remove();
+      const pin = (state, label, href, main) => {
+        const el = document.createElement(href ? 'a' : 'div');
+        el.className = 'mpin ' + state + (main ? ' main' : ''); if (href) el.href = href;
+        el.innerHTML = '<span class="dot"></span>' + (label ? '<span class="lb"></span>' : '');
+        if (label) el.querySelector('.lb').textContent = label;
+        el.title = label || '';
+        return el;
+      };
+      const bounds = new maplibregl.LngLatBounds([lon, lat], [lon, lat]);
+      const pins = new Map();
+      document.querySelectorAll('#near li.st').forEach(li => {
+        const la = +li.dataset.lat, lo = +li.dataset.lon; if (!la) return;
+        const st = ['open', 'soon', 'closed', 'unk'].find(c => li.classList.contains(c)) || 'unk';
+        const a = li.querySelector('a'), el = pin(st, '', a.getAttribute('href'));
+        el.setAttribute('aria-label', li.querySelector('.nm').textContent + ': ' + li.querySelector('.hr').textContent);
+        new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lo, la]).addTo(map);
+        bounds.extend([lo, la]); pins.set(li, el);
+        li.addEventListener('mouseenter', () => el.classList.add('hl'));
+        li.addEventListener('mouseleave', () => el.classList.remove('hl'));
+      });
+      const st = status(JSON.parse(art.dataset.s));
+      new maplibregl.Marker({ element: pin(st.state, art.dataset.name + ' · ' + st.short, '', true), anchor: 'bottom' }).setLngLat([lon, lat]).addTo(map);
+      if (pins.size) map.fitBounds(bounds, { padding: { top: 70, bottom: 30, left: 40, right: 50 }, maxZoom: 15.5, duration: 0 });
+    };
+    document.head.appendChild(js);
+  }
 })();
