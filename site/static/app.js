@@ -20,6 +20,7 @@
     if (today === undefined) return mk('unk', 'Ei tietoa', 'tiedot päivitetään pian', 'ei tietoa');
     if (today === null) return mk('unk', 'Ei tietoa', 'aukioloaikaa ei ole julkaistu tälle päivälle', 'ei tietoa');
     for (const [o, c] of ranges(today)) {
+      if (o === '?') return m < mins(c) ? mk('unk', 'Tänään', `auki klo ${tt(c, 1)} asti`, `klo ${tt(c, 1)} asti`) : mk('closed', 'Suljettu', '', 'suljettu');
       if (o === '00:00' && c === '24:00') return mk('open', 'Auki', 'ympäri vuorokauden', 'auki · 24 h');
       const cm = c === '24:00' || c === '00:00' ? 1440 : mins(c) <= mins(o) ? 1440 + mins(c) : mins(c);
       if (m >= mins(o) && m < cm) return openUntil(c, cm);
@@ -28,7 +29,7 @@
     for (let i = 1; i <= 6; i++) {
       const nd = shift(d, i), v = sched[nd];
       if (v === undefined || v === null) break;
-      if (v) { const o = ranges(v)[0][0]; return mk('closed', 'Suljettu', `aukeaa ${i === 1 ? 'huomenna' : wd(nd)} klo ${tt(o)}`, `suljettu · ${i === 1 ? 'huom.' : wd(nd)} ${tt(o)}`); }
+      if (v) { const [o, c] = ranges(v)[0]; if (o === '?') return mk('closed', 'Suljettu', `${i === 1 ? 'huomenna' : wd(nd)} auki klo ${tt(c, 1)} asti`, `suljettu · ${i === 1 ? 'huom.' : wd(nd)} –${tt(c, 1)}`); return mk('closed', 'Suljettu', `aukeaa ${i === 1 ? 'huomenna' : wd(nd)} klo ${tt(o)}`, `suljettu · ${i === 1 ? 'huom.' : wd(nd)} ${tt(o)}`); }
     }
     return mk('closed', 'Suljettu', '', 'suljettu');
   }
@@ -62,6 +63,9 @@
     const on = only.getAttribute('aria-pressed') !== 'true'; only.setAttribute('aria-pressed', String(on));
     document.querySelectorAll('#list li.st').forEach(li => { li.hidden = on && li.dataset.open !== '1'; });
   });
+  // aktiivinen päivävälilehti näkyviin vaakavieritettävässä rivissä
+  const tabs = document.querySelector('.tabs'), tabOn = tabs && tabs.querySelector('.tab.on');
+  if (tabOn && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = tabOn.offsetLeft - tabs.offsetLeft - (tabs.clientWidth - tabOn.offsetWidth) / 2;
 
   function dist(a, b, c, d) { const k = Math.PI / 180, x = (d - b) * k * Math.cos((a + c) / 2 * k), y = (c - a) * k; return Math.sqrt(x * x + y * y) * 6371; }
   const km = d => d < 1 ? Math.round(d * 1000) + ' m' : d.toFixed(1).replace('.', ',') + ' km';

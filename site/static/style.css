@@ -112,3 +112,221 @@ footer{padding-bottom:24px}
 .adbox{display:block;margin:20px 0;padding:8px 0;min-height:120px;border-top:1px solid var(--line,#e2e8e4);border-bottom:1px solid var(--line,#e2e8e4)}
 .adbox .adlabel{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#56655d;margin-bottom:4px}
 li.adli{list-style:none;margin:0;padding:10px 12px}
+
+/* ===== Visuaalinen katselmointi 24.11.2026 ===== */
+/* ==========================================================================
+   Kaupat auki – visuaalinen päivitys (liitä style.css:n LOPPUUN)
+   Vain ylikirjoituksia: ei poista eikä nimeä uudelleen app.js:n käyttämiä
+   luokkia (li.st, .tl-list, .track, #nowpill, #sheet, #results, .chip[aria-pressed], .pill.*).
+   Ei gradienttipintoja, ei vasemman reunan korostusviivoja, ei emojeja.
+   ========================================================================== */
+
+/* ---------- 1. Värit brändin mukaisiksi ---------- */
+:root{
+  --g:#0b7a4b;          /* brändivihreä (logo) – valkoinen teksti päällä 5.4:1 */
+  --g-d:#086a40;        /* tummempi vihreä tekstiksi vaaleille pohjille (5.6–5.9:1) */
+  --halo:#d3f2e2;       /* logon halo */
+  --g2:#e3f5ec;         /* vaalea vihreä pinta */
+  --acc:#1db56e;        /* aksentti – vain koriste, ei tekstiä */
+  --ink:#14201a;
+  --mut:#5d6a63;        /* 5.0:1 myös #eef2f0-pohjalla */
+  --line:#e1e7e3;
+  --bg:#f3f6f4;
+  --bar-open:#1a9560;   /* aikajanan palkki: 3.4:1 radaa vasten (WCAG 1.4.11) */
+  --bar-soon:#b87a0f;
+  --bar-closed:#7d8a83;
+  --track:#eef2f0;
+  --shadow:0 1px 2px rgba(20,32,26,.05),0 6px 20px -10px rgba(20,32,26,.14);
+}
+body{background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+h1{font-weight:800;letter-spacing:-.02em;line-height:1.15}
+h2{font-size:19px;font-weight:750;letter-spacing:-.01em;margin:32px 0 12px}
+h3{font-weight:700}
+.lead{font-size:16px;line-height:1.5}
+a{text-underline-offset:3px;text-decoration-thickness:1px}
+a:focus-visible,button:focus-visible,.tab:focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:10px}
+.st .hr,#viikko+.hours td,.tlhead .ticks,.nowtxt,.pill,.hols small,.cols small{font-variant-numeric:tabular-nums}
+
+/* ---------- 2. Yläpalkki: linjaan sisällön kanssa, isommat kosketusalueet ---------- */
+.top{padding:8px max(16px,calc((100% - 760px)/2 + 16px));gap:8px;border-bottom-color:var(--line)}
+.logo{font-size:19px;letter-spacing:-.02em;gap:10px;min-height:44px}
+.top nav{gap:4px;font-size:15px}
+.top nav a{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border-radius:12px;font-weight:600;color:var(--ink)}
+.top nav a:hover{background:var(--bg)}
+.top nav a:first-child{background:var(--halo);color:var(--g-d)}   /* kauden pyhä nostetaan esiin */
+@media (max-width:640px){
+  /* Mobiilissa hakupalkki on jo kiinteä alhaalla – yläpalkki ei vie tilaa vierittäessä */
+  .top{position:static;padding:6px 16px 6px;row-gap:2px}
+  .top nav{width:100%;margin:0;font-size:15px;overflow-x:auto;scrollbar-width:none}
+  .top nav a{padding:0 10px;flex:none}
+  .top nav a:first-child{padding:0 12px}
+}
+
+/* ---------- 3. Etusivun hero: brändipinta + logon rengasmotiivi ---------- */
+.hero{position:relative;overflow:hidden;background:var(--g);color:#fff;border:0;border-radius:24px;padding:26px 20px 20px;margin-top:16px}
+.hero::before,.hero::after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+.hero::after{width:210px;height:210px;right:-62px;top:-62px;border:26px solid rgba(211,242,226,.17)}
+.hero::before{width:46px;height:46px;right:20px;top:20px;background:rgba(255,255,255,.16)}
+.hero>*{position:relative;z-index:1}
+.hero h1{color:#fff;font-size:30px;max-width:24ch;margin-bottom:8px}
+.hero p{color:#e6f5ed;margin:0 0 16px}
+.hero .btn.big{background:#fff;color:var(--g-d);font-size:16px;min-height:52px;border-radius:14px;margin:0;box-shadow:0 2px 0 rgba(0,0,0,.08)}
+.hero .btn.big:hover{background:#f3fbf7}
+.hero .hint{color:#e6f5ed;font-size:14px;margin:12px 0 0}
+@media (max-width:520px){.hero h1{font-size:27px;max-width:13ch}}
+
+/* ---------- 4. Napit ja toimintorivit ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border-radius:12px;font-weight:650}
+.btn:hover{filter:brightness(1.06)}
+.btn.ghost{border-color:#b9d9c8}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}
+.acts .btn{margin:0;flex:1 1 auto}
+@media (min-width:640px){.acts .btn{flex:0 1 auto}}
+.card .btn{margin:6px 0 2px}
+
+/* ---------- 5. Pillerilinkit: siistit ruudukot isommille, 44 px kosketus ---------- */
+.hols{gap:8px;margin:8px 0 4px}
+.hols a{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-color:var(--line);font-weight:600;color:var(--g-d)}
+.hols a:hover{border-color:var(--g)}
+.hols small{font-weight:500;color:var(--mut)}
+.hols.big{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.hols.big a{border-radius:14px;padding:10px 14px;font-size:15px;color:var(--ink);background:#fff;flex-direction:column;align-items:flex-start;justify-content:center;gap:0;min-height:56px}
+.hols.big a small{font-size:13px}
+
+/* ---------- 6. Kauppalistat: yksi yhtenäinen lista rivijakajilla korttipinon sijaan ---------- */
+.list{background:#fff;border:1px solid var(--line);border-bottom-width:0;border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.list>li{border-bottom:1px solid var(--line)}
+.list .st{margin:0;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:12px 14px;gap:14px}
+.st[hidden]{display:none}                     /* BUGIKORJAUS: "Vain auki nyt" ei piilottanut rivejä (.st{display:grid} ohitti [hidden]) */
+.st:hover{background:#f8fbf9}
+.st a:focus-visible{outline-offset:-3px}
+.st .nm{font-size:16px;font-weight:650;letter-spacing:-.005em}
+.st .hr{font-size:14px;font-weight:700;display:block}
+.st .hr::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;margin:0 7px 1px 0;vertical-align:middle}
+.st:not(.tl):not(.open):not(.soon):not(.closed):not(.unk) .hr::before{display:none}
+.st .ad{font-size:13px;margin-top:1px}
+.st.empty{padding:16px 14px}
+/* tarjouslehti-sivujen rivit: "aukioloajat"-linkki oikealle, ei omalle rivilleen */
+.list .st:not(.tl){grid-template-columns:minmax(0,1fr) auto}
+.st .hr a{display:inline-flex;flex-direction:row;align-items:center;min-height:44px;padding:0 4px;color:var(--g-d);font-weight:650;text-decoration:underline}
+
+/* ---------- 7. Aikajana: tunti-ruudukko, täysvärinen palkki, yhtenäinen "nyt"-viiva ---------- */
+.tl-list .st{overflow:hidden}
+.track{height:14px;border-radius:7px;background:var(--track)}
+/* 3 tunnin jakoviivat palkin päällä (18 h akseli = 6 väliä): valkoinen 1.5 px viiva = viivaimen tuntu. Kuvio, ei liukuväripinta. */
+.track::before{content:"";position:absolute;inset:0 2px 0 0;z-index:1;pointer-events:none;border-radius:inherit;
+  background:repeating-linear-gradient(to right,transparent 0 calc(100%/6 - 1.5px),rgba(255,255,255,.7) calc(100%/6 - 1.5px) calc(100%/6))}
+.track.none::before{display:none}
+.track i{border:0;border-radius:7px;background:var(--bar-closed)}
+.st.open .track i{background:var(--bar-open)}
+.st.soon .track i{background:var(--bar-soon)}
+.track.none{background:transparent;border:1.5px dashed #b7c2bc}
+/* "auki klo 13 asti" -tyyppinen poikkeus (avausaika ei tiedossa): raidoitettu alku, kiinteä loppu – vaatii M5 */
+.st .track i.upto{border-radius:0 7px 7px 0;background:repeating-linear-gradient(135deg,var(--bar-open) 0 3px,#bfe3cf 3px 7px)}
+.st .track i.upto{box-shadow:inset -4px 0 0 var(--bar-open)}
+.tl-list.live .track::after{z-index:2;top:-60px;bottom:-60px;width:2px;margin-left:-1px;background:var(--blue);opacity:.85}
+.tlhead{padding:0 15px;margin-top:14px;margin-bottom:6px;align-items:end}
+.tlhead .ticks b{font-weight:600}
+@media (max-width:520px){
+  /* 390 px:llä 7 tuntilukua törmäsi ("21 24") – näytetään 6, 12, 18, 24 */
+  .tlhead .ticks b:nth-child(2n){display:none}
+  .st.tl{grid-template-columns:minmax(0,1fr) 40%}
+  .tlhead{grid-template-columns:minmax(0,1fr) 40%}
+}
+
+/* ---------- 8. Päivävälilehdet vs. suodattimet erottuvat ---------- */
+.tabs{gap:6px;padding:6px 0 10px;scroll-padding-inline:16px}
+@media (max-width:760px){.tabs{margin:0 -16px;padding-left:16px;padding-right:16px}}
+.tab{min-height:44px;font-weight:600;border-color:var(--line)}
+.tab.on{background:var(--g);border-color:var(--g);color:#fff}
+.tab:not(.on):hover{border-color:var(--g)}
+.chips{gap:8px;margin:2px 0 4px}
+.chip{min-height:44px;font-weight:600;border-color:#cfd8d3;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed=true]{background:var(--g2);border-color:var(--g);color:var(--g-d);font-weight:600}
+.chip[aria-pressed=true]::before{content:"✓";font-weight:800}
+
+/* ---------- 9. Pyhä-/Alko-nauha: informatiivinen, ei varoitusväriä ---------- */
+.strip{background:#fff;border:1px solid var(--line);border-radius:14px;min-height:56px;box-shadow:var(--shadow)}
+.strip .ic:first-child{width:36px;height:36px;padding:8px;border-radius:10px;background:var(--g2);color:var(--g-d);flex:none}
+.strip:hover{border-color:var(--g)}
+
+/* ---------- 10. Kauppasivun vastauskortti: vastaus näkyy heti ---------- */
+.answer{border:1px solid var(--line);border-radius:22px;padding:20px 18px 18px;gap:12px;box-shadow:var(--shadow)}
+.answer h1{font-size:28px}
+.addr{font-size:15px}
+.pill{font-weight:800;letter-spacing:-.005em}
+.pill.big{font-size:18px;padding:8px 16px 8px 13px;min-height:44px}
+.pill.open{background:var(--g);color:#fff}
+.pill.soon{background:var(--soon);color:#fff}
+.pill.closed{background:var(--r);color:#fff}
+.pill.unk{background:#eef1ef;color:var(--mut)}
+.nowtxt{font-size:17px}
+.trust{font-size:13px}
+.trust.unv .ic{color:var(--soon)}            /* vaatii markup-muutoksen M2 */
+.acts2 .btn{min-height:50px}
+
+/* ---------- 11. Aukiolotaulukot ---------- */
+.hours{border-collapse:separate;border-spacing:0;border-radius:16px;box-shadow:var(--shadow)}
+.hours tr:last-child th,.hours tr:last-child td{border-bottom:0}
+.hours th,.hours td{padding:12px 14px;font-size:15px}
+.hours th{width:auto;font-weight:500}
+.hours td{font-weight:600}
+#viikko+.hours td{text-align:right;white-space:nowrap}
+.hours tr.today{background:var(--g2)}
+.hours tr.today th,.hours tr.today td{color:var(--g-d);font-weight:750}
+.hours small{display:block;font-size:13px;line-height:1.4;font-weight:400;margin-top:2px}
+.hours th a{font-weight:600;color:var(--g-d)}
+.hours th a,.eyebrow a,footer a{display:inline-block;padding:12px 0;margin:-12px 0}   /* 44 px kosketusalue */
+.hours .unk{color:var(--mut);font-weight:500}  /* vaatii markup-muutoksen M3 */
+.hours.hol th{width:56%}
+@media (max-width:520px){.hours th{width:auto}.hours.hol th{width:56%}}
+em{font-size:12px;font-weight:700;border-radius:6px;padding:2px 7px;vertical-align:1px;white-space:nowrap}
+em.ok{background:var(--g2);color:var(--g-d)} /* "vahvistettu" vihreänä, vaatii M1 */
+
+/* ---------- 12. Murupolku, otsikkolinkit, kortit, kuntaluettelo ---------- */
+.crumbs{margin:2px 0 0;font-size:13px}
+.crumbs{line-height:1.45}
+.crumbs a{display:inline-block;padding:13px 0;margin:-13px 0}   /* 44 px kosketusalue ilman että rivit leviävät */
+main>.crumbs{padding:14px 0 2px}
+main h3{margin:22px 0 0;font-size:18px}
+h3+.tlhead{margin-top:0}
+.answer+.hols{margin-top:14px}
+main h3 a{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;min-height:44px}
+main h3 a::after{content:"›";margin-left:8px;color:var(--mut);font-weight:600}
+.card{border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);border-color:var(--line)}
+.card h2{font-size:18px;margin:2px 0 4px}
+.card h2 a{color:var(--ink);text-decoration:none}
+.card h2 a:hover{color:var(--g)}
+.card p{margin:4px 0 10px;color:var(--mut)}
+.cols{columns:2 150px;column-gap:24px}
+@media (min-width:700px){.cols{columns:3 150px}}
+.cols li{padding:0}
+.cols li a{display:inline-flex;align-items:center;min-height:44px;color:var(--g-d);text-decoration:none;font-weight:550}
+.cols li a:hover{text-decoration:underline}
+.note,.src{line-height:1.5}
+
+/* ---------- 13. Alapalkki ja tulospaneeli ---------- */
+.bar{box-shadow:0 -6px 20px -12px rgba(20,32,26,.25);border-top-color:var(--line)}
+.srch{background:var(--track);border:1px solid transparent;color:var(--mut)}
+.srch:focus-within{background:#fff;border-color:var(--g);box-shadow:0 0 0 3px var(--halo)}
+/* BUGIKORJAUS: input[type=search]-sääntö toi padding:12px 14px + margin-top:12px → teksti valui alas ikonista */
+.srch input,.srch input[type=search]{padding:0;margin:0;height:50px;border:0;border-radius:0;width:auto}
+.srch input::placeholder{color:var(--mut);opacity:1}
+.loc{background:var(--g)}
+.loc:hover{filter:brightness(1.08)}
+.sheet{border-color:var(--line);box-shadow:0 -10px 30px -8px rgba(20,32,26,.22);padding:4px 12px 10px}
+.sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:#cfd8d3;margin:6px auto 0}
+.sheethead{top:-4px;padding:6px 2px 8px;font-size:15px}
+.sheet .list{border:0;border-radius:0;box-shadow:none}
+.sheet .list .st{padding-left:4px;padding-right:4px}
+@media (min-width:800px){
+  body{padding-bottom:112px}
+  .dock{bottom:16px}
+  .bar{max-width:640px;border:1px solid var(--line);border-radius:22px;padding:8px;box-shadow:0 12px 32px -12px rgba(20,32,26,.30)}
+  .sheet{max-width:640px;border-radius:22px;border-bottom:1px solid var(--line);margin-bottom:8px;max-height:min(62vh,560px)}
+  .sheet::before{display:none}
+}
+
+/* ---------- 14. Alatunniste ---------- */
+footer{line-height:1.55}
+footer a{color:var(--mut)}

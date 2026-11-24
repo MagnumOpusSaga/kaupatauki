@@ -48,7 +48,12 @@ def add(**r):
     r.setdefault('exceptions', [])
     r['kunta'] = kunta_of(r['lat'], r['lon'])
     if not r['kunta']: return  # Suomen ulkopuolella
+    su = (r.get('src') or {}).get('url')
+    if (r.get('src') or {}).get('official') and su:  # sama virallinen myymäläsivu kahdesti (esim. S-sitemapissa) → yksi kauppa
+        if su in seen_src: return
+        seen_src.add(su)
     stores.append(r)
+seen_src = set()
 
 # --- S-ryhmä (s-kaupat.fi myymäläsivut) ---
 S_BRAND = {'prisma': 'Prisma', 's-market': 'S-market', 'sale': 'Sale', 'alepa': 'Alepa', 'food-market-herkku': 'Food Market Herkku',
@@ -158,7 +163,11 @@ for t in json.load(open(f'{RAW}/tok_all.json')):
 SKIP_BRANDS = {'S-market', 'Sale', 'Alepa', 'Prisma', 'ABC', 'Lidl', 'Tokmanni', 'Food Market Herkku', 'Alko', 'Rusta',
                'Flying Tiger Copenhagen', 'Stockmann', 'Systembolaget', 'Neste', 'Teboil', 'St1', 'Shell Select', 'Kärkkäinen'}
 S_NAMES = re.compile(r'^(S-market|Sale|Alepa|Prisma|ABC|Food Market Herkku|Lidl|Tokmanni)\b', re.I)
-K_FLYER = 'https://www.k-ruoka.fi/tarjouslehdet'
+# Tarkistettu 24.11.2026 k-ruoka.fi:n kauppasivuilta ("Avaa tarjouslehti"): K-Citymarketilla yksi valtakunnallinen lehti,
+# K-Supermarketilla ja K-Marketilla kauppakohtainen lehti ?kauppa=<kaupan slug>. (Aiempi /tarjouslehdet-osoite antoi 404.)
+K_FLYER = {'K-Citymarket': 'https://kcm-lehdet.k-ruoka.fi/tarjouslehti',
+           'K-Supermarket': 'https://www.k-ruoka.fi/k-supermarket/tarjouslehti',
+           'K-Market': 'https://www.k-ruoka.fi/k-market/tarjouslehti'}
 CHAIN_FLYERS = {
     'Minimani': 'https://www.minimani.fi/lehti-ilmoitukset-mainoslehti',
     'M-ketju': 'https://www.m-ketju.fi/tarjoukset',
@@ -187,9 +196,15 @@ for x in json.load(open(f'{RAW}/osm_shops.json')):
         if shop == 'convenience' and re.search(r'(?i)kiosk|r-kioski|grilli|tupakka|vape|alko', n): continue
         chain = 'Lähikauppa' if shop in ('convenience', 'general') else 'Muu ruokakauppa'
     web = t.get('website') or t.get('contact:website') or ''
+    if web and not re.match(r'https?://', web): web = 'https://' + web.lstrip('/')  # OSM:ssä osoite joskus ilman https://
     if group == 'K-ryhmä':
+        # Vanha k-market.fi/kaupat/<nimi>/ ohjautuu k-ruoka.fi/kauppa/k-market-<nimi> (tarkistettu 24.11.2026)
+        mk = re.search(r'k-market\.fi/kaupat/([a-z0-9-]+)', web)
+        if mk: web = f'https://www.k-ruoka.fi/kauppa/k-market-{mk.group(1)}'
         m = re.search(r'k-ruoka\.fi/kauppa/([a-z0-9-]+)', web)
-        flyer = {'url': f'https://www.k-ruoka.fi/tarjouslehdet/kauppa/{m.group(1)}', 'kind': 'store'} if m else {'url': K_FLYER, 'kind': 'chain'}
+        base = K_FLYER[chain]
+        if m and chain != 'K-Citymarket': flyer = {'url': f'{base}?kauppa={m.group(1)}', 'kind': 'store'}
+        else: flyer = {'url': base, 'kind': 'chain'}
     elif chain in CHAIN_FLYERS:
         flyer = {'url': CHAIN_FLYERS[chain], 'kind': 'chain'}
     else:
