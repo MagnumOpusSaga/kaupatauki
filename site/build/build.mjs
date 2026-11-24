@@ -405,47 +405,57 @@ if (XMAS.days.length) {
   const sFirst = eve ? fiDate(iso(add(new Date(eve.iso + 'T00:00:00Z'), -21))) : '';
   const big = anyGrocery
     ? `${dayStats.map(({ h, st }) => st.open + st.closed ? `${h.name}: ${st.open + st.closed} kauppaa julkaissut ajan` : null).filter(Boolean).join(' · ')}. Lista päivittyy joka yö.`
-    : `Ruokakauppaketjut eivät ole vielä julkaisseet joulun aukioloaikoja.${alkoLine ? ` Alkon ajat ovat jo tiedossa: ${alkoLine}.` : ''}`;
+    : `Ruokakauppaketjut eivät ole vielä julkaisseet joulun aukioloaikoja. Alkon ajat ovat jo tiedossa – katso taulukko.`;
+  // UKK: jouluaatto ja joulupäivä yhdessä vastauksessa, jotta sama teksti ei toistu
+  const pubTxt = h => { const st = holStats(stores, h.iso), pub = st.open + st.closed; return pub ? `${h.when} ${fiDate(h.iso)} ${pub} ruokakauppaa on julkaissut aikansa (${st.open} auki, ${st.closed} suljettu)` : null; };
+  const xmasDays = [eve, xday].filter(Boolean), pubs = xmasDays.map(pubTxt).filter(Boolean);
+  const notYet = xmasDays.filter(h => !pubTxt(h)).map(h => h.when);
   const faq = [];
-  const dayAns = h => {
-    if (!h) return null;
-    const st = holStats(stores, h.iso), pub = st.open + st.closed;
-    return pub
-      ? `${pub} ruokakauppaa on julkaissut aukioloaikansa ${h.when} ${fiDateY(h.iso)}: ${st.open} on auki ja ${st.closed} suljettu. Ketjukohtaiset ajat näet tältä sivulta ja kunnittaiset listat sivulta Kaupat auki ${h.when}.`
-      : `Ketjut eivät ole vielä julkaisseet aikoja ${h.when} ${fiDateY(h.iso)}. Kaupat saavat olla auki myös pyhinä, sillä kauppojen aukioloja rajoittava laki kumottiin vuonna 2016 – aukiolo on jokaisen kaupan oma päätös. Päivitämme ajat heti, kun kaupat julkaisevat ne.`;
-  };
-  if (eve) faq.push([`Ovatko kaupat auki jouluaattona ${Y}?`, dayAns(eve)]);
-  if (xday) faq.push([`Ovatko kaupat auki joulupäivänä ${Y}?`, dayAns(xday)]);
-  if (eve && alkoDayTxt(eve.iso)) faq.push([`Onko Alko auki jouluaattona ${Y}?`, `Alkon tiedotteen mukaan ${alkoLine}.${ALKO_Q3 ? ` Lähde: ${ALKO_Q3.name}.` : ''}`]);
-  if (eve) faq.push(['Milloin kauppojen joulun aukioloajat julkaistaan?', `S-ryhmän kauppojen (Prisma, S-market, Sale, Alepa) ajat näkyvät lähteessämme noin kolme viikkoa etukäteen, eli jouluaaton ajat noin ${sFirst} alkaen. Lidlin ja Tokmannin poikkeusajat päivittyvät, kun ketju merkitsee ne myymäläsivuilleen. Tarkistamme lähteet joka yö.`]);
+  if (xmasDays.length) faq.push([`Ovatko kaupat auki jouluna ${Y}?`, [
+    pubs.length ? `${pubs.join('; ')}.` : '',
+    notYet.length ? `Ketjut eivät ole vielä julkaisseet aikoja ${notYet.join(' eivätkä ')}.` : '',
+    'Kaupat saavat olla auki myös pyhinä, sillä kauppojen aukioloja rajoittava laki kumottiin vuonna 2016 – aukiolo on jokaisen kaupan oma päätös. Päivitämme ajat heti, kun kaupat julkaisevat ne.'
+  ].filter(Boolean).join(' ')]);
+  if (eve && alkoDayTxt(eve.iso)) faq.push([`Onko Alko auki jouluaattona ${Y}?`, `Alkon tiedotteen mukaan ${alkoLine}.`]);
+  const SRC_ROWS = [
+    ['S-ryhmä', `Prisman, S-marketin, Salen ja Alepan ajat tulevat S-kaupat.fi:n myymäläsivuilta, joilla ajat näkyvät noin kolme viikkoa etukäteen${eve ? ` – jouluaaton ajat siis noin ${sFirst} alkaen` : ''}.`],
+    ['Lidl', 'Lidl.fi:n myymäläsivujen poikkeusaukioloajat. Näkyvät, kun Lidl merkitsee ne myymäläsivuille.'],
+    ['Tokmanni', 'Tokmanni.fi:n myymälähaun poikkeusaukioloajat.'],
+    ['K-ryhmä', 'K-kauppojen joulun ajoille meillä ei vielä ole virallista lähdettä, koska K-kauppiaat päättävät ajoista kauppakohtaisesti. Tarkista K-Citymarketin, K-Supermarketin ja K-Marketin aika kaupan omalta sivulta.'],
+    ['Alko', 'Alkon omat tiedotteet.'],
+  ];
+  const srcQ = 'Milloin ja mistä joulun ajat tulevat?';
+  const ldFaq = [...faq, [srcQ, `${SRC_ROWS.map(([k, v]) => `${k}: ${v}`).join(' ')} Tarkistamme lähteet joka yö.`]];
+  const groceryCell = (h, st) => `<a href="#${h.slug}">${[st.open && `${st.open} auki`, st.closed && `${st.closed} kiinni`].filter(Boolean).join(', ')}</a>`;
+  const alkoCell = d => { const x = chainDay('Alko', d); if (!x) return 'ei vielä julkaistu'; return x.n === x.N && x.topN === x.N ? `kaikki ${x.top}` : /sunnuntaisin/.test(x.top) ? 'sunnuntaimyymälät auki' : `${x.n} myymälää: ${x.top}`; };
+  // Peräkkäiset tyhjät ruokakauppasolut yhdistetään yhdeksi soluksi (rowspan), ettei sama teksti toistu riveittäin
+  const empt = dayStats.map(({ st }) => !(st.open + st.closed));
+  const runLen = i => { let n = 0; while (empt[i + n]) n++; return n; };
+  const groceryTd = (i, h, st) => !empt[i] ? `<td>${groceryCell(h, st)}</td>` : (i > 0 && empt[i - 1]) ? '' : `<td rowspan="${runLen(i)}" class="unk mid">ei vielä julkaistu${eve && i === 0 ? `<small>S-ryhmän jouluaatto näkyy noin ${sFirst} alkaen</small>` : ''}</td>`;
+  const detailed = dayStats.filter(({ st }) => st.open + st.closed);
   put('/joulu/', layout({
     title: `Kaupat auki jouluna ${Y} – joulun aukioloajat ketjuittain | Kaupat auki`,
     desc: `Joulun aukioloajat ${Y}: Prisma, K-Citymarket, S-market, Lidl, Tokmanni ja Alko jouluaattona, joulupäivänä, tapaninpäivänä ja uutena vuotena.`,
     canonical: '/joulu/',
-    jsonld: [crumbs(cr), { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) }],
+    jsonld: [crumbs(cr), { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: ldFaq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) }],
     body: `${crumbHtml(cr)}
 <section class="answer"><span class="eyebrow">Joulu ja uusi vuosi ${Y} · päivitetty ${BUILD_STAMP}</span><h1>Kaupat auki jouluna ${Y}</h1>
 <p class="big-ans">${esc(big)}</p>
 <p class="trust">${ICON.shield}Näytämme vain kauppojen ja ketjujen itse julkaisemat ajat. Emme arvaa.</p></section>
-<div class="hols">${XMAS.days.map(h => `<a href="#${h.slug}">${esc(h.name)} <small>${WD_FI[wdOf(h.iso)]} ${fiDate(h.iso)}</small></a>`).join('')}</div>
-${dayStats.map(({ h, st }) => `<h2 id="${h.slug}">${esc(h.name)} – ${WD_FI_LONG[wdOf(h.iso)]} ${fiDateY(h.iso)}</h2>
-${st.open + st.closed ? `<p>${st.open + st.closed} kauppaa ${stores.length.toLocaleString('fi')}:stä on julkaissut ajan (${st.open} auki, ${st.closed} suljettu).</p>
-<table class="hours">${XMAS_CHAINS.map(c => `<tr><th><a href="${c === 'Alko' ? `/alko/${h.slug}/` : `/ketju/${chainSlug(c)}/`}">${esc(c)}</a></th><td>${chainDayTxt(c, h.iso)}</td></tr>`).join('')}</table>` : `<table class="hours"><tr><th>Ruokakaupat</th><td><span class="unk">ei vielä julkaistu</span></td></tr>${chains.Alko ? `<tr><th><a href="/alko/${h.slug}/">Alko</a></th><td>${chainDayTxt('Alko', h.iso)}</td></tr>` : ''}</table>`}
+<h2>Joulun ja uudenvuoden päivät</h2>
+<table class="hours xt"><thead><tr><th>Päivä</th><th>Ruokakaupat</th>${chains.Alko ? '<th>Alko</th>' : ''}</tr></thead><tbody>
+${dayStats.map(({ h, st }, i) => `<tr><th><a href="/auki/${h.slug}/">${esc(h.name)}</a><small>${WD_FI[wdOf(h.iso)]} ${fiDate(h.iso)}</small></th>${groceryTd(i, h, st)}${chains.Alko ? `<td><a href="/alko/${h.slug}/">${esc(alkoCell(h.iso))}</a></td>` : ''}</tr>`).join('\n')}
+</tbody></table>
+<p class="note">Päivän nimestä aukeaa kunnittainen lista, Alkon ajasta päivän kaikki Alkot.${ALKO_Q3 ? ` Alkon ajat: <a href="${esc(ALKO_Q3.url)}" rel="noopener">${esc(ALKO_Q3.name)}</a>${TODAY <= `${Y}-12-20` ? '; sen mukaan sunnuntaina 20.12. auki on yli 140 Alkoa' : ''}.` : ''} Alko saa alkoholilain mukaan olla auki joka päivä klo 9–21 – <a href="/aukiololaki/">lue lisää aukiolosäännöistä</a>.</p>
+${detailed.map(({ h, st }) => `<h2 id="${h.slug}">${esc(h.name)} – ${WD_FI_LONG[wdOf(h.iso)]} ${fiDateY(h.iso)}</h2>
+<table class="hours">${XMAS_CHAINS.map(c => `<tr><th><a href="${c === 'Alko' ? `/alko/${h.slug}/` : `/ketju/${chainSlug(c)}/`}">${esc(c)}</a></th><td>${chainDayTxt(c, h.iso)}</td></tr>`).join('')}</table>
 <p><a href="/auki/${h.slug}/">Kaupat auki ${esc(h.when)} kunnittain →</a></p>`).join('\n')}
 ${eve ? `<h2>Jouluaatto suurimmissa kaupungeissa</h2><div class="hols">${BIG.slice(0, 16).map(k => `<a href="/auki/jouluaattona/${slugify(k)}/">${esc(k)}</a>`).join('')}<a href="/auki/jouluaattona/#kaikki">Kaikki kunnat →</a></div>` : ''}
-<h2>Alko jouluna ${Y}</h2>
-<p>Alko on tiedottanut joulun ja uudenvuoden ajat kaikille myymälöilleen${ALKO_Q3 ? ` (<a href="${esc(ALKO_Q3.url)}" rel="noopener">${esc(ALKO_Q3.name)}</a>)` : ''}:</p>
-<ul>${XMAS.days.map(h => alkoDayTxt(h.iso) ? `<li><a href="/alko/${h.slug}/">${esc(h.name)} ${fiDate(h.iso)}</a>: ${esc(alkoDayTxt(h.iso))}</li>` : '').join('')}${TODAY <= `${Y}-12-20` ? `<li>Sunnuntaina 20.12. auki on Alkon mukaan yli 140 myymälää.</li>` : ''}</ul>
-<p class="note">Sunnuntaisin avoinna olevat Alkot ja niiden ajat näet Alkon pyhäsivuilta yllä. Alko saa alkoholilain mukaan olla auki joka päivä klo 9–21 – <a href="/aukiololaki/">lue lisää aukiolosäännöistä</a>.</p>
-<h2>Mistä joulun ajat tulevat?</h2>
-<table class="hours"><tr><th>S-ryhmä</th><td>Prisman, S-marketin, Salen ja Alepan ajat tulevat S-kaupat.fi:n myymäläsivuilta, joilla ajat näkyvät noin kolme viikkoa etukäteen${eve ? ` – jouluaaton ajat siis noin ${sFirst} alkaen` : ''}.</td></tr>
-<tr><th>Lidl</th><td>Lidl.fi:n myymäläsivujen poikkeusaukioloajat. Näkyvät, kun Lidl merkitsee ne myymäläsivuille.</td></tr>
-<tr><th>Tokmanni</th><td>Tokmanni.fi:n myymälähaun poikkeusaukioloajat.</td></tr>
-<tr><th>K-ryhmä</th><td>K-kauppojen joulun ajoille meillä ei vielä ole virallista lähdettä, koska K-kauppiaat päättävät ajoista kauppakohtaisesti. Tarkista K-Citymarketin, K-Supermarketin ja K-Marketin aika kaupan omalta sivulta.</td></tr>
-<tr><th>Alko</th><td>Alkon omat tiedotteet.</td></tr></table>
 <h2>Usein kysyttyä</h2>
 ${faq.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}
-<p><a href="/aukiololaki/">Saavatko kaupat olla auki pyhinä? Aukiololaki ja Alkon säännöt →</a></p>`
+<h3>${srcQ}</h3>
+<table class="hours srct">${SRC_ROWS.map(([k, v]) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`).join('')}</table>
+<p class="note">Tarkistamme lähteet joka yö. <a href="/aukiololaki/">Saavatko kaupat olla auki pyhinä? Aukiololaki ja Alkon säännöt →</a></p>`
   }));
 }
 
@@ -464,35 +474,35 @@ const LAW_SRC = [
 ];
 {
   const cr = [['Kaupat auki', '/'], ['Aukiololaki', '/aukiololaki/']];
-  const faq = [
-    ['Saavatko kaupat olla auki pyhäpäivinä?', 'Kyllä. Kauppojen aukioloaikoja rajoittanut laki kumottiin 1.1.2016 alkaen, joten kauppa päättää itse, milloin se on auki – myös jouluna, pääsiäisenä ja juhannuksena.'],
-    ['Mihin aikaan ruokakaupasta saa ostaa alkoholia?', 'Alkoholijuomien vähittäismyynti on sallittu joka päivä klo 9–21. Sama aikaraja koskee myös pyhäpäiviä.'],
-    ['Saako Alko olla auki sunnuntaina ja pyhinä?', 'Kyllä. Alkoholilain muutos tuli voimaan 3.7.2026, ja sen jälkeen Alko saa olla auki vuoden jokaisena päivänä klo 9–21. Alko päättää myymäläkohtaiset ajat itse.'],
+  // Kysymykset ovat itse väliotsikoita → UKK-JSON-LD samasta tekstistä, ei erillistä toistavaa UKK-osiota
+  const LAW_QA = [
+    ['Milloin kauppojen aukiololaki kumottiin?', [
+      'Kauppojen aukioloista säädettiin aiemmin vähittäiskaupan sekä parturi- ja kampaamoliikkeen aukioloajoista annetussa laissa (945/2009). Eduskunta kumosi sen lailla 1618/2015, joka tuli voimaan 1.1.2016.',
+      'Sääntely oli purettu vähitellen jo ennen sitä: vuonna 2009 pienten kauppojen aukioloajat vapautettiin kokonaan, ja kaikki kaupat saivat olla auki sunnuntaisin klo 12–21.']],
+    ['Miksi jotkin kaupat ovat silti kiinni pyhinä?', [
+      'Koska aukiolo on kaupan oma päätös, ajat vaihtelevat ketjuittain ja usein myös kaupoittain. Esimerkiksi Lidl kertoi vuonna 2020 pitävänsä kaikki Suomen myymälänsä kiinni joulupäivänä, jotta henkilökunta voi viettää joulua. K-kauppojen ajoista päättävät kauppiaat kauppakohtaisesti, ja S-ryhmän kaupat julkaisevat ajat myymäläkohtaisesti.',
+      `Siksi oman kaupan pyhäaika kannattaa aina tarkistaa erikseen. Kokoamme kauppojen itse julkaisemat ajat <a href="/joulu/">joulun koostesivulle</a> ja juhlapyhäsivuille: ${HOL.slice(0, 6).map(h => `<a href="/auki/${h.slug}/">${esc(h.name)}</a>`).join(', ')}.`]],
+    ['Mihin aikaan ruokakaupasta saa ostaa alkoholia?', [
+      'Alkoholijuomien myyntiä rajoittaa edelleen alkoholilaki (1102/2017). Ruokakaupat ja muut vähittäismyyntiluvan saaneet saavat myydä alkoholijuomia joka päivä klo 9–21, myös sunnuntaisin ja pyhinä. Vaikka kauppa olisi auki ympäri vuorokauden, alkoholia ei voi ostaa klo 21:n jälkeen eikä ennen klo 9:ää.',
+      'Ruokakauppa saa myydä enintään 8-prosenttisia käymisteitse valmistettuja juomia, kuten oluita ja siidereitä, sekä enintään 5,5-prosenttisia muulla tavoin valmistettuja juomia. Vahvemmat juomat myy Alko.']],
+    ['Saako Alko olla auki sunnuntaina ja pyhinä?', [
+      'Kyllä, 3.7.2026 alkaen. Eduskunta hyväksyi alkoholilain muutoksen kesäkuussa 2026, ja sen jälkeen Alko saa olla auki vuoden jokaisena päivänä klo 9–21. Laki ei velvoita pitämään myymälöitä auki, vaan Alko päättää ajat myymäläkohtaisesti. Heinäkuusta 2026 alkaen osa Alkoista on ollut auki myös sunnuntaisin.',
+      'Ennen muutosta Alko sai olla auki maanantaista perjantaihin klo 9–21 ja lauantaisin klo 9–18, mutta ei sunnuntaisin eikä arkipyhinä.',
+      `Alkojen pyhäajat: ${HOL.slice(0, 6).map(h => `<a href="/alko/${h.slug}/">Alko ${esc(h.when)}</a>`).join(', ')}.`]],
   ];
+  const plain = t => t.replace(/<[^>]+>/g, '');
   put('/aukiololaki/', layout({
-    title: 'Saavatko kaupat olla auki pyhinä? Aukiololaki ja Alkon säännöt | Kaupat auki',
+    title: 'Saavatko kaupat olla auki pyhinä? Aukiololaki ja Alko | Kaupat auki',
     desc: 'Kauppojen aukiololaki kumottiin 2016, joten kauppa päättää aukiolostaan myös pyhinä. Alkoholia saa myydä klo 9–21, ja Alko saa olla auki joka päivä.',
     canonical: '/aukiololaki/',
-    jsonld: [crumbs(cr), { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) }],
+    jsonld: [crumbs(cr), { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: [
+      { '@type': 'Question', name: 'Saavatko kaupat olla auki pyhäpäivinä?', acceptedAnswer: { '@type': 'Answer', text: 'Kyllä. Suomessa ei ole 1.1.2016 jälkeen ollut lakia, joka rajoittaisi kauppojen aukioloaikoja. Kauppa päättää itse, onko se auki jouluna, pääsiäisenä tai juhannuksena.' } },
+      ...LAW_QA.map(([q, ps]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: plain(ps[0]) } }))] }],
     body: `${crumbHtml(cr)}
 <section class="answer"><span class="eyebrow">Päivitetty ${LAW_UPDATED}</span><h1>Saavatko kaupat olla auki pyhinä?</h1>
 <p class="big-ans">Kyllä. Suomessa ei ole 1.1.2016 jälkeen ollut lakia, joka rajoittaisi kauppojen aukioloaikoja. Kauppa päättää itse, onko se auki jouluna, pääsiäisenä tai juhannuksena.</p>
 <p class="trust">${ICON.shield}Lähteet: Finlex, sosiaali- ja terveysministeriö, eduskunta ja Alko – lista sivun lopussa.</p></section>
-<h2>Aukiololaki kumottiin vuonna 2016</h2>
-<p>Kauppojen aukioloista säädettiin aiemmin vähittäiskaupan sekä parturi- ja kampaamoliikkeen aukioloajoista annetussa laissa (945/2009). Eduskunta kumosi sen lailla 1618/2015, joka tuli voimaan 1.1.2016. Siitä lähtien kauppa on saanut olla auki mihin aikaan tahansa ja minä päivänä tahansa.</p>
-<p>Sääntely oli purettu vähitellen jo ennen sitä. Vuonna 2009 pienten kauppojen aukioloajat vapautettiin kokonaan ja kaikki kaupat saivat olla auki sunnuntaisin klo 12–21. Vuonna 2016 aukiolosääntelystä luovuttiin kokonaan.</p>
-<h2>Miksi jotkin kaupat ovat silti kiinni pyhinä?</h2>
-<p>Koska aukiolo on kaupan oma päätös, ajat vaihtelevat ketjuittain ja usein myös kaupoittain. Esimerkiksi Lidl kertoi vuonna 2020 pitävänsä kaikki Suomen myymälänsä kiinni joulupäivänä, jotta henkilökunta voi viettää joulua. K-kauppojen ajoista päättävät kauppiaat kauppakohtaisesti, ja S-ryhmän kaupat julkaisevat ajat myymäläkohtaisesti.</p>
-<p>Siksi oman kaupan pyhäaika kannattaa aina tarkistaa erikseen. Kokoamme kauppojen itse julkaisemat ajat <a href="/joulu/">joulun koostesivulle</a> ja juhlapyhäsivuille: ${HOL.slice(0, 6).map(h => `<a href="/auki/${h.slug}/">${esc(h.name)}</a>`).join(', ')}.</p>
-<h2>Alkoholin myynti ruokakaupassa</h2>
-<p>Alkoholin myyntiä rajoittaa edelleen alkoholilaki (1102/2017). Ruokakaupat ja muut vähittäismyyntiluvan saaneet saavat myydä alkoholijuomia joka päivä klo 9–21, myös sunnuntaisin ja pyhinä. Vaikka kauppa olisi auki ympäri vuorokauden, alkoholia ei voi ostaa klo 21:n jälkeen eikä ennen klo 9:ää.</p>
-<p>Ruokakauppa saa myydä enintään 8-prosenttisia käymisteitse valmistettuja juomia, kuten oluita ja siidereitä, sekä enintään 5,5-prosenttisia muulla tavoin valmistettuja juomia. Vahvemmat juomat myy Alko.</p>
-<h2>Alkon aukioloajat</h2>
-<p>Alkon aukioloja säätelee alkoholilaki. Ennen kesää 2026 Alko sai olla auki maanantaista perjantaihin klo 9–21 ja lauantaisin klo 9–18, mutta ei sunnuntaisin eikä arkipyhinä.</p>
-<p>Eduskunta hyväksyi alkoholilain muutoksen kesäkuussa 2026, ja laki tuli voimaan 3.7.2026. Sen jälkeen Alko saa olla auki vuoden jokaisena päivänä klo 9–21. Laki ei velvoita pitämään myymälöitä auki, vaan Alko päättää ajat myymäläkohtaisesti. Heinäkuusta 2026 alkaen osa Alkoista on ollut auki myös sunnuntaisin.</p>
-<p>Alkojen pyhäajat: ${HOL.slice(0, 6).map(h => `<a href="/alko/${h.slug}/">Alko ${esc(h.when)}</a>`).join(', ')}.</p>
-<h2>Usein kysyttyä</h2>
-${faq.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}
+${LAW_QA.map(([q, ps]) => `<h2>${esc(q)}</h2>\n${ps.map(t => `<p>${t}</p>`).join('\n')}`).join('\n')}
 <h2>Lähteet</h2>
 <ul class="srcs">${LAW_SRC.map(([n, u]) => `<li><a href="${esc(u)}" rel="noopener">${esc(n)}</a></li>`).join('')}</ul>
 <p class="note">Tämä sivu on yleiskatsaus, ei oikeudellinen neuvo. Säädösten ajantasainen teksti on Finlexissä.</p>`

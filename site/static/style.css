@@ -370,3 +370,10 @@ a.card.xmas{display:flex;flex-direction:column;gap:2px;text-decoration:none;colo
 a.card.xmas b{font-size:18px;color:var(--g)}a.card.xmas span{color:var(--mut);font-size:14px}
 .srcs{padding-left:18px}.srcs li{margin:6px 0;font-size:14px}
 main h3{font-size:16px;margin:16px 0 4px}
+/* joulukooste: päivätaulukko (v8) */
+.xt thead th{font-size:12px;font-weight:600;color:var(--mut);padding:8px 14px;background:transparent}
+.xt tbody th{width:auto}.xt tbody th small{display:block;color:var(--mut);font-weight:400;font-size:13px}
+.xt td{font-weight:600}.xt td a,.xt th a{color:inherit}.xt td a{text-decoration-color:var(--line)}
+@media (max-width:520px){.xt th,.xt td{padding:10px 8px;font-size:14px}.xt tbody th{width:34%}}
+.xt td.mid{vertical-align:middle;font-weight:500;color:var(--mut)}.xt td.mid small{display:block;font-size:12px;font-weight:400;margin-top:4px}
+.srct td{font-weight:400}
