@@ -8,7 +8,7 @@ problems = []
 def note(where, what): problems.append(f'{where}: {what}')
 
 PAGES = ['/', '/kaupat/tampere/', '/kaupat/helsinki/', '/auki/jouluaattona/', '/auki/jouluaattona/tampere/', '/auki/itsenaisyyspaivana/oulu/',
-         '/alko/jouluaattona/', '/ketju/lidl/', '/ketju/alko/', '/tarjouslehdet/', '/tarjouslehti/k-market/', '/kaupungit/', '/tietoa/', '/tietosuoja/']
+         '/alko/jouluaattona/', '/ketju/lidl/', '/ketju/alko/', '/tarjouslehdet/', '/tarjouslehti/k-market/', '/kaupungit/', '/tietoa/', '/tietosuoja/', '/joulu/', '/aukiololaki/']
 import os
 kaupat = sorted(os.listdir('/tmp/d2/kauppa'))
 PAGES += ['/kauppa/' + k + '/' for k in random.sample(kaupat, 25)]
