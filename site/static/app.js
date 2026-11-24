@@ -72,10 +72,13 @@
   const sn = document.getElementById('sortnear');
   if (sn) sn.addEventListener('click', () => locate((la, lo) => {
     sn.setAttribute('aria-pressed', 'true');
-    const ul = document.getElementById('list'), lis = [...ul.children];
+    const ul = document.getElementById('list'), lis = [...ul.querySelectorAll('li.st')], adli = ul.querySelector('li.adli');
     lis.forEach(li => { li._d = dist(la, lo, +li.dataset.lat, +li.dataset.lon); const a = li.querySelector('.ad'); if (a && !a.dataset.k) { a.dataset.k = 1; a.textContent = km(li._d) + ' · ' + a.textContent; } });
     lis.sort((a, b) => a._d - b._d).forEach(li => ul.appendChild(li));
+    if (adli && lis[11]) lis[11].after(adli);
   }));
+  const cl = document.getElementById('consentlink');
+  if (cl) cl.addEventListener('click', e => { e.preventDefault(); window.googlefc = window.googlefc || {}; (googlefc.callbackQueue = googlefc.callbackQueue || []).push({ 'CONSENT_API_READY': () => googlefc.showRevocationMessage() }); });
 
   // D: alapalkki – haku ja lähimmät paneeliin
   const sheet = document.getElementById('sheet'), res = document.getElementById('results'), title = document.getElementById('sheettitle'), q = document.getElementById('q');

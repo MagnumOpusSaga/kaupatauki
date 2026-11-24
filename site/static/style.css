@@ -109,3 +109,6 @@ body{padding-bottom:96px}
 input[type=search]::-webkit-search-cancel-button{display:none}
 footer{padding-bottom:24px}
 .answer .big-ans{font-size:1.3rem;font-weight:700;line-height:1.35;margin:.35rem 0 .5rem}
+.adbox{display:block;margin:20px 0;padding:8px 0;min-height:120px;border-top:1px solid var(--line,#e2e8e4);border-bottom:1px solid var(--line,#e2e8e4)}
+.adbox .adlabel{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#56655d;margin-bottom:4px}
+li.adli{list-style:none;margin:0;padding:10px 12px}

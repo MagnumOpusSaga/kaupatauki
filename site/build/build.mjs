@@ -103,7 +103,11 @@ const sortStores = arr => arr.slice().sort((a, b) => ((CHAIN_ORDER.indexOf(a.cha
 // ---------- HTML-runko ----------
 const url = p => SITE.origin + p;
 const BUILD_STAMP = fiDateY(TODAY);
-function layout({ title, desc, canonical, body, jsonld = [], extraHead = '' }) {
+// ---------- AdSense: kytketään päälle site.json "adsEnabled": true (vasta hyväksynnän jälkeen) ----------
+const ADS = !!(SITE.adsEnabled && SITE.adsenseClient);
+const AD_SLOTS = SITE.adSlots || {};
+const adUnit = (slot, cls = 'adbox') => ADS && slot ? `<aside class="${cls}" aria-label="Mainos"><span class="adlabel">Mainos</span><ins class="adsbygoogle" style="display:block" data-ad-client="${esc(SITE.adsenseClient)}" data-ad-slot="${esc(slot)}" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></aside>` : '';
+function layout({ title, desc, canonical, body, jsonld = [], extraHead = '', ads = true }) {
   const robots = SITE.preview ? '<meta name="robots" content="noindex,nofollow">' : '';
   return `<!doctype html><html lang="fi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -111,18 +115,18 @@ function layout({ title, desc, canonical, body, jsonld = [], extraHead = '' }) {
 <link rel="canonical" href="${esc(url(canonical))}">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(url(canonical))}"><meta property="og:type" content="website"><meta property="og:locale" content="fi_FI"><meta property="og:image" content="${url('/og.png')}">
 <link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/icon-96.png" type="image/png" sizes="96x96"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0b7a4b">
-<link rel="stylesheet" href="/style.css?v=${SITE.version}">${SITE.bingVerify ? `<meta name="msvalidate.01" content="${esc(SITE.bingVerify)}">` : ''}${SITE.adsenseClient ? `<meta name="google-adsense-account" content="${esc(SITE.adsenseClient)}">` : ''}
+<link rel="stylesheet" href="/style.css?v=${SITE.version}">${SITE.bingVerify ? `<meta name="msvalidate.01" content="${esc(SITE.bingVerify)}">` : ''}${SITE.adsenseClient ? `<meta name="google-adsense-account" content="${esc(SITE.adsenseClient)}">` : ''}${ADS && ads ? `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${esc(SITE.adsenseClient)}" crossorigin="anonymous"></script>` : ''}
 ${jsonld.map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`).join('')}${extraHead}
 </head><body>
 ${SITE.preview ? '<div class="preview">Esikatselu – sivusto ei ole vielä julkinen eikä hakukoneissa.</div>' : ''}
 <header class="top"><a class="logo" href="/"><img src="/favicon.svg" alt="" width="28" height="28">Kaupat auki</a>
 <nav><a href="/auki/${HOL.find(h => h.top)?.slug || HOL[0].slug}/">${esc(HOL.find(h => h.top)?.name || HOL[0].name)}</a><a href="/tarjouslehdet/">Tarjouslehdet</a><a href="/kaupungit/">Kaupungit</a></nav></header>
-<main>${body}</main>
+<main>${body}${ads ? adUnit(AD_SLOTS.below) : ''}</main>
 <div class="dock"><div class="sheet" id="sheet" hidden><div class="sheethead"><b id="sheettitle">Tulokset</b><button type="button" id="sheetclose" class="x" aria-label="Sulje tulokset">${ICON.x}</button></div><ul class="list" id="results"></ul></div>
 <form class="bar" role="search" action="/kaupungit/"><label class="srch">${ICON.search}<input id="q" type="search" name="q" placeholder="Hae kauppaa tai kuntaa" autocomplete="off" aria-label="Hae kauppaa tai kuntaa"></label><button type="button" id="nearme" class="loc" aria-label="Näytä lähimmät auki olevat kaupat">${ICON.nav}</button></form></div>
 <footer><p><b>Kaupat auki</b> kokoaa ruokakauppojen aukioloajat ja juhlapyhien poikkeusajat ketjujen virallisista lähteistä. Palvelu ei ole kauppaketjujen virallinen palvelu – tarkista kiireellinen tieto kaupalta.</p>
 <p>Lähteet: S-kaupat.fi, Lidl.fi, Tokmanni.fi sekä © <a href="https://www.openstreetmap.org/copyright">OpenStreetMapin tekijät</a> (ODbL). Kuntarajat © Tilastokeskus (CC BY 4.0). Päivitetty ${BUILD_STAMP}.</p>
-<p><a href="/tietoa/">Tietoa ja lähteet</a> · <a href="/tietosuoja/">Tietosuoja</a> · ${esc(SITE.email)}</p>
+<p><a href="/tietoa/">Tietoa ja lähteet</a> · <a href="/tietosuoja/">Tietosuoja</a>${ADS ? ' · <a href="#" id="consentlink">Evästeasetukset</a>' : ''} · ${esc(SITE.email)}</p>
 <p>© ${TODAY.slice(0, 4)} ${esc(SITE.owner)}</p></footer>
 <script src="/app.js?v=${SITE.version}" defer></script></body></html>`;
 }
@@ -169,7 +173,7 @@ function storeRow(s, date, opts = {}) {
 <a href="/kauppa/${s.slug}/"><span class="nm">${esc(s.name)}</span><span class="hr">${txt}</span><span class="ad">${esc([s.street, s.postname].filter(Boolean).join(', '))}</span></a>
 <div class="track${cls === 'unk' ? ' none' : ''}" aria-hidden="true">${v && v.k !== 'u' ? bars(v.r) : ''}</div></li>`;
 }
-const tlList = (arr, date, opts = {}) => `${tlHead(opts.label || 'Järjestys: auki pisimpään')}<ul class="list tl-list" id="${opts.id || 'list'}" data-d="${date}"${opts.holiday ? '' : ' data-live="1"'}>${arr.map(s => storeRow(s, date, opts)).join('')}</ul>`;
+const tlList = (arr, date, opts = {}) => `${tlHead(opts.label || 'Järjestys: auki pisimpään')}<ul class="list tl-list" id="${opts.id || 'list'}" data-d="${date}"${opts.holiday ? '' : ' data-live="1"'}>${arr.map((s, i) => storeRow(s, date, opts) + (opts.ad && i === 11 && arr.length > 20 ? adUnit(AD_SLOTS.list, 'adbox adli').replace(/^<aside/, '<li').replace(/<\/aside>$/, '</li>') : '')).join('')}</ul>`;
 
 // ---------- sivut ----------
 const pages = []; // {path, html}
@@ -257,7 +261,7 @@ for (const k of kunnat) {
 <div class="tabs"><span class="tab on">Tänään ${WD_FI[wdOf(TODAY)]} ${fiDate(TODAY)}</span>${HOL.slice(0, 5).map(h => `<a class="tab" href="/auki/${h.slug}/${ks}/">${esc(h.name)} ${fiDate(h.iso)}</a>`).join('')}</div>
 <div class="chips"><button type="button" class="chip" id="onlyopen" aria-pressed="false">Vain auki nyt</button><button type="button" class="chip" id="sortnear" aria-pressed="false">Lähimmät ensin</button></div>
 ${alkoStrip(k, TODAY, null)}
-${tlList(arr, TODAY)}`
+${tlList(arr, TODAY, { ad: true })}`
   }));
 }
 // Kaupunkiluettelo
@@ -315,7 +319,7 @@ for (const h of HOL) {
 <p class="lead">${esc(h.name)} ${wd} ${fiDateY(d)}. ${pub ? `${s3.open} kauppaa auki, ${s3.closed} suljettu, ${s3.unk} ei vielä tietoa.` : `Kaupat eivät ole vielä julkaisseet tämän päivän aukioloaikoja. Sivu päivittyy automaattisesti, kun tieto julkaistaan.`}</p>
 <div class="tabs"><a class="tab" href="/kaupat/${ks}/">Tänään</a>${HOL.slice(0, 5).map(x => x === h ? `<span class="tab on">${esc(x.name)} ${fiDate(x.iso)}</span>` : `<a class="tab" href="/auki/${x.slug}/${ks}/">${esc(x.name)} ${fiDate(x.iso)}</a>`).join('')}</div>
 ${alkoStrip(k, d, h)}
-${tlList(arr, d, { holiday: true, label: `${h.name} ${fiDate(d)} · auki pisimpään ensin` })}
+${tlList(arr, d, { holiday: true, ad: true, label: `${h.name} ${fiDate(d)} · auki pisimpään ensin` })}
 <p class="note">Näytämme vain kauppojen itse julkaisemat poikkeusajat. "Ei tietoa" tarkoittaa, ettei kauppa ole vielä julkaissut aikaa tai sille ei ole virallista lähdettä.</p>
 <div class="hols"><a href="/kaupat/${ks}/">${esc(k)}: aukioloajat tänään</a>${HOL.filter(x => x !== h).slice(0, 6).map(x => `<a href="/auki/${x.slug}/${ks}/">${esc(x.name)}</a>`).join('')}</div>`
     }));
@@ -415,7 +419,7 @@ put('/', layout({
 
 // Tietoa + tietosuoja
 const srcCount = g => stores.filter(s => s.group === g).length;
-put('/tietoa/', layout({
+put('/tietoa/', layout({ ads: false,
   title: 'Tietoa ja lähteet | Kaupat auki', desc: 'Mistä Kaupat auki -palvelun tiedot tulevat ja miten ne päivittyvät.', canonical: '/tietoa/',
   body: `<h1>Tietoa ja lähteet</h1>
 <p>Kaupat auki kokoaa ruokakauppojen aukioloajat yhteen paikkaan. Keräämme vain tosiasiat – kaupan nimen, osoitteen, sijainnin ja aukioloajat – ja näytämme jokaisella sivulla lähteen ja hakupäivän. Tarjouslehtien sisältöä emme kopioi: linkki vie aina kaupan omaan, viralliseen lehteen.</p>
@@ -429,17 +433,18 @@ put('/tietoa/', layout({
 <p>Palaute ja korjaukset: ${esc(SITE.email)}</p>`
 }));
 put('/tietosuoja/', layout({
-  title: 'Tietosuojaseloste | Kaupat auki', desc: 'Kaupat auki -palvelun tietosuojaseloste.', canonical: '/tietosuoja/',
+  title: 'Tietosuojaseloste | Kaupat auki', desc: 'Kaupat auki -palvelun tietosuojaseloste.', canonical: '/tietosuoja/', ads: false,
   body: `<h1>Tietosuojaseloste</h1><p>Päivitetty ${esc(SITE.privacyUpdated)}.</p>
 <h2>Rekisterinpitäjä</h2><p>${esc(SITE.owner)}, Y-tunnus ${esc(SITE.businessId)}. Yhteydenotot: ${esc(SITE.email)}.</p>
-<h2>Mitä tietoja käsittelemme</h2><p>Palvelu ei käytä evästeitä, kirjautumista eikä mainosseurantaa. Emme kerää nimiä, sähköpostiosoitteita emmekä IP-osoitteita omaan käyttöömme.</p>
+<h2>Mitä tietoja käsittelemme</h2>${ADS ? `<p>Palvelussa ei ole kirjautumista. Emme kerää nimiä, sähköpostiosoitteita emmekä IP-osoitteita omaan käyttöömme.</p>
+<p><b>Mainokset ja evästeet:</b> palvelun kulut katetaan Google AdSense -mainoksilla. Google ja sen kumppanit voivat käyttää evästeitä ja laitetunnisteita mainosten näyttämiseen, mittaamiseen ja – suostumuksellasi – mainosten kohdentamiseen. Suostumus kysytään Googlen sertifioidulla suostumusikkunalla (IAB TCF) ensimmäisellä käynnillä; voit kieltäytyä, jolloin näytetään vain rajoitettuja, ei-personoituja mainoksia. Voit muuttaa valintaasi milloin tahansa sivun alareunan linkistä "Evästeasetukset". Lisätietoja: <a href="https://policies.google.com/technologies/partner-sites?hl=fi" rel="noopener">Miten Google käyttää tietoja kumppanisivustoilla</a>.</p>` : `<p>Palvelu ei käytä evästeitä, kirjautumista eikä mainosseurantaa. Emme kerää nimiä, sähköpostiosoitteita emmekä IP-osoitteita omaan käyttöömme.</p>`}
 <p><b>Kävijätilastot:</b> käytämme Cloudflare Web Analyticsia, joka laskee sivujen latauksia ja sivun latausnopeutta ilman evästeitä ja ilman yksittäisen kävijän tunnistamista tai seurantaa sivustolta toiselle. Näemme vain koostetut luvut (esim. sivulataukset, maa, selain).</p>
 <p><b>Sijainti:</b> jos painat "Näytä lähimmät", selain kysyy luvan sijaintiisi. Sijainti käsitellään vain laitteellasi lähimpien kauppojen järjestämiseen, eikä sitä lähetetä meille.</p>
 <p><b>Palvelin:</b> sivusto toimii Cloudflaren palvelussa (Cloudflare, Inc.), joka käsittelee teknisiä lokitietoja (esim. IP-osoite) palvelun toimittamiseksi ja suojaamiseksi Cloudflaren omien ehtojen mukaisesti.</p>
 <p><b>Ulkoiset linkit:</b> tarjouslehti- ja kauppalinkit avautuvat kauppojen omille sivuille, joiden tietosuojasta vastaavat kaupat itse. Reittilinkki avaa Google Mapsin.</p>
 <h2>Oikeutesi</h2><p>Voit kysyä meiltä käsittelystä osoitteessa ${esc(SITE.email)}. Sinulla on oikeus tehdä valitus tietosuojavaltuutetulle (tietosuoja.fi).</p>`
 }));
-put('/404.html', layout({ title: 'Sivua ei löytynyt | Kaupat auki', desc: 'Sivua ei löytynyt.', canonical: '/404.html', body: '<h1>Sivua ei löytynyt</h1><p><a href="/">Etusivulle</a> tai <a href="/kaupungit/">kunnat</a>.</p>' }));
+put('/404.html', layout({ ads: false, title: 'Sivua ei löytynyt | Kaupat auki', desc: 'Sivua ei löytynyt.', canonical: '/404.html', body: '<h1>Sivua ei löytynyt</h1><p><a href="/">Etusivulle</a> tai <a href="/kaupungit/">kunnat</a>.</p>' }));
 
 // ---------- kirjoitus ----------
 fs.rmSync(DIST, { recursive: true, force: true });
