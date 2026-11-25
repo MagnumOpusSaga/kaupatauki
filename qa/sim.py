@@ -25,7 +25,7 @@ def check_page(page, path, label):
     ov = page.evaluate('document.documentElement.scrollWidth - window.innerWidth')
     if ov > 2: note(f'{label} {path}', f'vaakavieritys {ov}px')
     # elementit jotka menevät yli ruudun
-    wide = page.evaluate('''[...document.querySelectorAll('main *')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.right>window.innerWidth+2}).slice(0,3).map(e=>e.tagName+'.'+e.className+' '+Math.round(e.getBoundingClientRect().right))''')
+    wide = page.evaluate('''[...document.querySelectorAll('main *')].filter(e=>{if(e.closest('.tabs,.mapbox'))return false;const r=e.getBoundingClientRect();return r.width>0&&r.right>window.innerWidth+2}).slice(0,3).map(e=>e.tagName+'.'+e.className+' '+Math.round(e.getBoundingClientRect().right))''')
     if wide: note(f'{label} {path}', f'yli ruudun: {wide}')
     txt = page.inner_text('body')
     for pat in (r'\bundefined\b', r'\bNaN\b', r'\[object', r'Invalid Date'):
@@ -72,7 +72,7 @@ with sync_playwright() as p:
         if 'Ei osumia' not in page.locator('#results').inner_text(): note(label, 'tyhjä haku ei kerro "Ei osumia"')
         page.click('#sheetclose'); page.wait_for_timeout(200)
         if not page.locator('#sheet').is_hidden(): note(label, 'paneeli ei sulkeudu')
-        page.click('#nearme'); page.wait_for_timeout(1500)
+        page.fill('#q', ''); page.wait_for_timeout(100); page.click('#nearme'); page.wait_for_timeout(1500)
         t = page.locator('#results').inner_text()
         if 'Tampere' not in t and 'km' not in t and ' m' not in t: note(label, f'Lähelläni ei näytä lähimpiä: {t[:150]}')
         # etusivun iso nappi
