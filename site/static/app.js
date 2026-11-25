@@ -62,6 +62,7 @@
   if (only) only.addEventListener('click', () => {
     const on = only.getAttribute('aria-pressed') !== 'true'; only.setAttribute('aria-pressed', String(on));
     document.querySelectorAll('#list li.st').forEach(li => { li.hidden = on && li.dataset.open !== '1'; });
+    const pins = document.getElementById('map')?._pins; if (pins) pins.forEach((el, li) => { el.style.display = li.hidden ? 'none' : ''; });
   });
   // aktiivinen päivävälilehti näkyviin vaakavieritettävässä rivissä
   const tabs = document.querySelector('.tabs'), tabOn = tabs && tabs.querySelector('.tab.on');
@@ -99,6 +100,8 @@
       li.innerHTML = '<a><span class="nm"></span><span class="hr"></span><span class="ad"></span></a>';
       li.querySelector('a').href = `/kauppa/${slug}/`;
       li.querySelector('.nm').textContent = name;
+      const g = /^(Prisma|S-market|Sale|Alepa|ABC|Food Market Herkku)/.test(name) ? ['S', 's'] : /^K-/.test(name) ? ['K', 'k'] : /^Lidl/.test(name) ? ['L', 'l'] : /^Tokmanni/.test(name) ? ['T', 't'] : /^Alko/.test(name) ? ['A', 'a'] : /^M-/.test(name) ? ['M', 'm'] : /^Minimani/.test(name) ? ['Mi', 'mi'] : /^Halpa-Halli/.test(name) ? ['H', 'h'] : [(name.trim()[0] || '•').toUpperCase(), 'o'];
+      const cb = document.createElement('b'); cb.className = 'cb cb-' + g[1]; cb.setAttribute('aria-hidden', 'true'); cb.textContent = g[0]; li.querySelector('.nm').prepend(cb);
       li.querySelector('.hr').textContent = st.short;
       li.querySelector('.ad').textContent = (la != null ? km(dist(la, lo, lat, lon)) + ' · ' : '') + [street, kunta].filter(Boolean).join(', ');
       res.appendChild(li);
@@ -127,42 +130,72 @@
       openSheet(hits.length ? `${hits.length} kauppaa` : 'Ei osumia'); render(hits.slice(0, 30));
     });
   }
-  // Kauppasivun kartta (vain leveillä näytöillä ≥1000 px): MapLibre + OpenFreeMap, ladataan vasta tarvittaessa
+  // Kartta: MapLibre + OpenFreeMap. Tietokoneella (≥1000 px) heti, puhelimella vasta "Näytä kartalla" -napista.
+  // Merkit tulevat listasta (data-list): kauppasivulla "Lähellä tänään", kunta- ja juhlapyhäsivuilla koko lista.
   const mapEl = document.getElementById('map');
-  if (mapEl && art && window.matchMedia('(min-width:1000px)').matches) {
-    mapEl.hidden = false;
-    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/vendor/maplibre/maplibre-gl.css'; document.head.appendChild(css);
-    const js = document.createElement('script'); js.src = '/vendor/maplibre/maplibre-gl.js'; js.async = true;
-    js.onerror = () => { mapEl.hidden = true; };
-    js.onload = () => {
-      const lat = +art.dataset.lat, lon = +art.dataset.lon;
-      const map = new maplibregl.Map({ container: mapEl, style: 'https://tiles.openfreemap.org/styles/positron', center: [lon, lat], zoom: 14.5, attributionControl: { compact: false }, cooperativeGestures: true });
+  let libP = null, mapObj = null;
+  function loadLib() {
+    if (!libP) libP = new Promise((res, rej) => {
+      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/vendor/maplibre/maplibre-gl.css'; document.head.appendChild(css);
+      const js = document.createElement('script'); js.src = '/vendor/maplibre/maplibre-gl.js'; js.async = true; js.onload = res; js.onerror = rej; document.head.appendChild(js);
+    });
+    return libP;
+  }
+  const touch = window.matchMedia('(hover: none)').matches;
+  function pin(state, label, href, main) {
+    const el = document.createElement(href ? 'a' : 'div');
+    el.className = 'mpin ' + state + (main ? ' main' : ''); if (href) el.href = href;
+    el.innerHTML = '<span class="dot"></span>' + (label ? '<span class="lb"></span>' : '');
+    if (label) el.querySelector('.lb').textContent = label;
+    return el;
+  }
+  function initMap() {
+    if (mapEl._init) return; mapEl._init = 1; mapEl.hidden = false;
+    loadLib().then(() => {
+      const items = [...document.querySelectorAll('#' + (mapEl.dataset.list || 'near') + ' li.st')].filter(li => +li.dataset.lat);
+      const c0 = art ? [+art.dataset.lon, +art.dataset.lat] : items.length ? [+items[0].dataset.lon, +items[0].dataset.lat] : [25.5, 62.5];
+      const map = mapObj = new maplibregl.Map({ container: mapEl, style: 'https://tiles.openfreemap.org/styles/positron', center: c0, zoom: art ? 14.5 : 11, attributionControl: { compact: false }, cooperativeGestures: true });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
       mapEl.querySelector('.maphint')?.remove();
-      const pin = (state, label, href, main) => {
-        const el = document.createElement(href ? 'a' : 'div');
-        el.className = 'mpin ' + state + (main ? ' main' : ''); if (href) el.href = href;
-        el.innerHTML = '<span class="dot"></span>' + (label ? '<span class="lb"></span>' : '');
-        if (label) el.querySelector('.lb').textContent = label;
-        el.title = label || '';
-        return el;
-      };
-      const bounds = new maplibregl.LngLatBounds([lon, lat], [lon, lat]);
-      const pins = new Map();
-      document.querySelectorAll('#near li.st').forEach(li => {
-        const la = +li.dataset.lat, lo = +li.dataset.lon; if (!la) return;
+      const bounds = new maplibregl.LngLatBounds(c0, c0);
+      const pins = mapEl._pins = new Map();
+      let armed = null; // kosketusnäytöllä 1. napautus näyttää nimen, 2. avaa kaupan
+      items.forEach(li => {
+        const la = +li.dataset.lat, lo = +li.dataset.lon;
         const st = ['open', 'soon', 'closed', 'unk'].find(c => li.classList.contains(c)) || 'unk';
-        const a = li.querySelector('a'), el = pin(st, '', a.getAttribute('href'));
-        el.setAttribute('aria-label', li.querySelector('.nm').textContent + ': ' + li.querySelector('.hr').textContent);
+        const nmEl = li.querySelector('.nm'), nm = nmEl.lastChild ? nmEl.lastChild.textContent : nmEl.textContent; // ketjumerkki ei mukaan
+        const label = nm + ' · ' + li.querySelector('.hr').textContent;
+        const el = pin(st, label, li.querySelector('a').getAttribute('href'));
+        el.setAttribute('aria-label', label);
+        const on = () => { el.classList.add('hl'); li.classList.add('hl'); }, off = () => { el.classList.remove('hl'); li.classList.remove('hl'); };
+        el.addEventListener('mouseenter', on); el.addEventListener('mouseleave', off);
+        li.addEventListener('mouseenter', on); li.addEventListener('mouseleave', off);
+        if (touch) el.addEventListener('click', e => { if (armed !== el) { e.preventDefault(); if (armed) armed.classList.remove('hl'); armed = el; el.classList.add('hl'); } });
         new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lo, la]).addTo(map);
         bounds.extend([lo, la]); pins.set(li, el);
-        li.addEventListener('mouseenter', () => el.classList.add('hl'));
-        li.addEventListener('mouseleave', () => el.classList.remove('hl'));
+        if (li.hidden) el.style.display = 'none';
       });
-      const st = status(JSON.parse(art.dataset.s));
-      new maplibregl.Marker({ element: pin(st.state, art.dataset.name + ' · ' + st.short, '', true), anchor: 'bottom' }).setLngLat([lon, lat]).addTo(map);
-      if (pins.size) map.fitBounds(bounds, { padding: { top: 70, bottom: 30, left: 40, right: 50 }, maxZoom: 15.5, duration: 0 });
-    };
-    document.head.appendChild(js);
+      if (art) {
+        const st = status(JSON.parse(art.dataset.s));
+        new maplibregl.Marker({ element: pin(st.state, art.dataset.name + ' · ' + st.short, '', true), anchor: 'bottom' }).setLngLat(c0).addTo(map);
+      }
+      // Kuntasivulla rajaus kauppojen ydinalueeseen (5.–95. persentiili), jotta muutama syrjäinen kauppa ei loitonna karttaa
+      let fit = bounds;
+      if (!art && items.length > 12) {
+        const q = (arr, p) => arr[Math.min(arr.length - 1, Math.max(0, Math.round(p * (arr.length - 1))))];
+        const las = items.map(li => +li.dataset.lat).sort((a, b) => a - b), los = items.map(li => +li.dataset.lon).sort((a, b) => a - b);
+        fit = new maplibregl.LngLatBounds([q(los, .05), q(las, .05)], [q(los, .95), q(las, .95)]);
+      }
+      if (pins.size) map.fitBounds(fit, { padding: art ? { top: 70, bottom: 30, left: 40, right: 50 } : 40, maxZoom: art ? 15.5 : 14, duration: 0 });
+    }).catch(() => { mapEl.hidden = true; document.querySelectorAll('.mapbtn').forEach(b => { b.hidden = true; }); });
+  }
+  if (mapEl) {
+    if (window.matchMedia('(min-width:1000px)').matches) initMap();
+    document.querySelectorAll('.mapbtn').forEach(b => b.addEventListener('click', () => {
+      if (!mapEl._init) initMap(); else { mapEl.hidden = !mapEl.hidden; if (mapObj && !mapEl.hidden) mapObj.resize(); }
+      b.setAttribute('aria-expanded', String(!mapEl.hidden));
+      b.querySelector('span').textContent = mapEl.hidden ? 'Näytä kartalla' : 'Piilota kartta';
+      if (!mapEl.hidden) mapEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }));
   }
 })();

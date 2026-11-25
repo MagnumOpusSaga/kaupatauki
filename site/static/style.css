@@ -380,3 +380,38 @@ main h3{font-size:16px;margin:16px 0 4px}
 /* Parkpenny-linkki (v9) */
 .park{margin:10px 0 0}.park a{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);text-decoration-color:var(--line);min-height:44px}
 .pbadge{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:5px;background:#1f5fbf;color:#fff;font-weight:700;font-size:13px}
+/* ===== v10: ketjumerkit, kartta kunta-/juhlapyhäsivuilla ja puhelimella, jouluaksentti ===== */
+/* ketjumerkki: ryhmän kirjain + tunnusväri (koriste; ketjun nimi on aina tekstinä) */
+.cb{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border-radius:11px;margin-right:8px;vertical-align:-4px;font-size:11.5px;font-weight:800;letter-spacing:-.02em;color:#fff;background:#8a968f;line-height:1}
+.cb-s{background:#00843d}.cb-k{background:#e85d04}.cb-l{background:#0050aa;color:#ffe600}.cb-t{background:#c8102e}
+.cb-a{background:#7a1f3d}.cb-m{background:#1f5fbf}.cb-mi{background:#5b3fa0}.cb-h{background:#f2b705;color:#14201a}
+.eyebrow{display:flex;align-items:center;flex-wrap:wrap;gap:0 4px}.eyebrow .cb{margin-right:4px;vertical-align:0}
+.st.hl{background:var(--g2)}
+/* kartta */
+.mapbtn .ic{width:16px;height:16px;margin-right:6px}.mapbtn{display:inline-flex;align-items:center}
+.mapbox{position:relative;height:320px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#e9eee9;margin:10px 0 12px}
+.mapbox.tall{height:min(62vh,420px)}
+.maphint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;margin:0;color:var(--mut);font-size:14px}
+.split{display:flex;flex-direction:column}.split-map{order:-1;min-width:0}.split-list{min-width:0}
+.mpin{position:relative}
+.mpin:not(.main) .lb{display:none;position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);padding:4px 9px;border-radius:8px;background:#14201a;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25);pointer-events:none}
+.mpin:not(.main).hl .lb,.mpin:not(.main):hover .lb{display:block}
+.mpin.hl{z-index:3}
+@media (min-width:1000px){
+  .mapbtn,.chips.maponly{display:none}
+  .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+  .split-map{order:0;position:sticky;top:76px}
+  .split-map .mapbox{margin:0}
+  .mapbox.tall{height:calc(100vh - 100px);min-height:440px;max-height:860px}
+  .store-side .mapbox{margin:0}
+}
+/* jouluaksentti (marraskuu–6.1.) */
+:root{--xm:#b8322a;--xm2:#fdeeec}
+.top nav a.xm{background:var(--xm2);color:var(--xm);gap:6px}.top nav a.xm .ic{width:16px;height:16px}
+a.card.xmas{border-color:var(--xm);background:linear-gradient(180deg,#fff, #fff8f7)}a.card.xmas b{color:var(--xm);display:flex;align-items:center;gap:8px}a.card.xmas b .ic{width:20px;height:20px}
+.answer.xmas{border-top:4px solid var(--xm)}.answer.xmas .eyebrow{color:var(--xm)}.answer.xmas .eyebrow .ic{width:15px;height:15px;margin-right:2px}
+h1.xm{display:flex;align-items:flex-start;gap:10px}h1.xm .ic{width:.8em;height:.8em;color:var(--xm);margin-top:.12em}
+.strip.xmas .ic:first-child{background:var(--xm2);color:var(--xm)}.strip.xmas:hover{border-color:var(--xm)}
+.mpin.main{max-width:min(78vw,420px)}.mpin.main .lb{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.xt th,.xt td{overflow-wrap:anywhere}
+@media (max-width:520px){.xt tbody th a{font-size:13.5px}}

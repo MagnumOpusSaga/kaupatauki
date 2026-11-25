@@ -124,7 +124,7 @@ ${jsonld.map(j => `<script type="application/ld+json">${JSON.stringify(j).replac
 </head><body>
 ${SITE.preview ? '<div class="preview">Esikatselu – sivusto ei ole vielä julkinen eikä hakukoneissa.</div>' : ''}
 <header class="top"><a class="logo" href="/"><img src="/favicon.svg" alt="" width="28" height="28">Kaupat auki</a>
-<nav>${XMAS_NAV ? '<a href="/joulu/">Joulu</a>' : `<a href="/auki/${HOL.find(h => h.top)?.slug || HOL[0].slug}/">${esc(HOL.find(h => h.top)?.name || HOL[0].name)}</a>`}<a href="/tarjouslehdet/">Tarjouslehdet</a><a href="/kaupungit/">Kaupungit</a></nav></header>
+<nav>${XMAS_NAV ? `<a href="/joulu/" class="xm">${ICON.snow}Joulu</a>` : `<a href="/auki/${HOL.find(h => h.top)?.slug || HOL[0].slug}/">${esc(HOL.find(h => h.top)?.name || HOL[0].name)}</a>`}<a href="/tarjouslehdet/">Tarjouslehdet</a><a href="/kaupungit/">Kaupungit</a></nav></header>
 <main${wide ? ' class="wide"' : ''}>${body}${ads ? adUnit(AD_SLOTS.below) : ''}</main>
 <div class="dock"><div class="sheet" id="sheet" hidden><div class="sheethead"><b id="sheettitle">Tulokset</b><button type="button" id="sheetclose" class="x" aria-label="Sulje tulokset">${ICON.x}</button></div><ul class="list" id="results"></ul></div>
 <form class="bar" role="search" action="/kaupungit/"><label class="srch">${ICON.search}<input id="q" type="search" name="q" placeholder="Hae kauppaa tai kuntaa" autocomplete="off" aria-label="Hae kauppaa tai kuntaa"></label><button type="button" id="nearme" class="loc" aria-label="Näytä lähimmät auki olevat kaupat">${ICON.nav}</button></form></div>
@@ -154,7 +154,16 @@ const ICON = {
   chev: svgI('<path d="M9 6l6 6-6 6"/>'), shield: svgI('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>'),
   paper: svgI('<path d="M6 3h9l5 5v13H6z"/><path d="M14 3v6h6M9 13h7M9 17h5"/>'),
   info: svgI('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),
+  map: svgI('<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>'),
+  snow: svgI('<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/><path d="M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5M3.6 10.4L6.8 9.3 5.9 6M18.1 18l-.9-3.3 3.2-1.1M3.6 13.6l3.2 1.1-.9 3.3M18.1 6l-.9 3.3 3.2 1.1"/>'),
 };
+// Ketjumerkki: ryhmän kirjain ja tunnusväri (ei logoja). S-ryhmä (myös ABC), K-ryhmä, Lidl, Tokmanni, Alko, M-ketju…
+const CB_GROUP = c => /^(Prisma|S-market|Sale|Alepa|ABC|Food Market Herkku)$/.test(c) ? ['S', 's'] : /^K-/.test(c) ? ['K', 'k'] : c === 'Lidl' ? ['L', 'l'] : c === 'Tokmanni' ? ['T', 't'] : c === 'Alko' ? ['A', 'a'] : c === 'M-ketju' ? ['M', 'm'] : c === 'Minimani' ? ['Mi', 'mi'] : c === 'Halpa-Halli' ? ['H', 'h'] : null;
+const chainBadge = s => { const g = CB_GROUP(s.chain); const [t, c] = g || [(s.name.trim()[0] || '•').toUpperCase(), 'o']; return `<b class="cb cb-${c}" aria-hidden="true">${esc(t)}</b>`; };
+// Kartta: puhelimella napautuksella, tietokoneella aina (app.js)
+const mapBox = (list, tall) => `<div class="mapbox${tall ? ' tall' : ''}" id="map" data-list="${list}" hidden><p class="maphint">Kartta ladataan…</p></div>`;
+const mapBtn = `<button type="button" class="chip mapbtn" aria-controls="map" aria-expanded="false">${ICON.map}<span>Näytä kartalla</span></button>`;
+const isXmas = slug => XMAS_NAV && !!XMAS_MD[slug];
 // Aikajana (B): akseli klo 6–24
 const AX0 = 6, AX1 = 24;
 const toH = t => +t.slice(0, 2) + +t.slice(3, 5) / 60;
@@ -177,7 +186,7 @@ function storeRow(s, date, opts = {}) {
   const sd = JSON.stringify(compact(s, opts.holiday ? [date] : next7));
   const txt = esc(dayText(v)) + (v?.k === 'x' ? (opts.holiday ? ' <em class="ok">vahvistettu</em>' : ' <em>poikkeusaika</em>') : '');
   return `<li class="st tl ${cls}" data-s='${esc(sd)}' data-lat="${s.lat.toFixed(5)}" data-lon="${s.lon.toFixed(5)}"${opts.holiday ? ' data-fixed="1"' : ''}>
-<a href="/kauppa/${s.slug}/"><span class="nm">${esc(dispName(s))}</span><span class="hr">${txt}</span><span class="ad">${esc([s.street, s.postname].filter(Boolean).join(', '))}</span></a>
+<a href="/kauppa/${s.slug}/"><span class="nm">${chainBadge(s)}${esc(dispName(s))}</span><span class="hr">${txt}</span><span class="ad">${esc([s.street, s.postname].filter(Boolean).join(', '))}</span></a>
 <div class="track${cls === 'unk' ? ' none' : ''}" aria-hidden="true">${v && v.k !== 'u' ? (v.text && v.close ? upto(v.close) : bars(v.r)) : ''}</div></li>`;
 }
 const dispName = s => (slugify(s.name).replace(/-/g, '') === slugify(s.chain).replace(/-/g, '') && s.street) ? `${s.name} ${s.street}` : s.name;
@@ -234,7 +243,7 @@ for (const s of allStores) {
   const nextHol = HOL[0];
   const sh = HOL.find(h => h.top) || HOL[0], shv = s.sched[sh.iso];
   const shTxt = shv.k !== 'u' ? `${dayText(shv)} · vahvistettu` : (s.src.official ? (sh.slug.match(/joulu|tapani|uudenvuoden/) ? 'ajat julkaistaan yleensä joulukuun alussa' : 'ei vielä julkaistu') : 'ei vahvistettua tietoa');
-  const holStrip = `<a class="strip" href="${s.chain === 'Alko' ? `/alko/${sh.slug}/#${slugify(s.kunta)}` : `/auki/${sh.slug}/${slugify(s.kunta)}/`}">${ICON.cal}<span><b>${esc(sh.name)} ${WD_FI[wdOf(sh.iso)]} ${fiDate(sh.iso)}</b> · ${esc(shTxt)}</span>${ICON.chev}</a>`;
+  const holStrip = `<a class="strip${isXmas(sh.slug) ? ' xmas' : ''}" href="${s.chain === 'Alko' ? `/alko/${sh.slug}/#${slugify(s.kunta)}` : `/auki/${sh.slug}/${slugify(s.kunta)}/`}">${ICON.cal}<span><b>${esc(sh.name)} ${WD_FI[wdOf(sh.iso)]} ${fiDate(sh.iso)}</b> · ${esc(shTxt)}</span>${ICON.chev}</a>`;
   put(`/kauppa/${s.slug}/`, layout({
     title: `${s.name} aukioloajat${s.kunta && !s.name.includes(s.kunta) ? ' ' + s.kunta : ''}${DUP_NAME.has(s.name + '|' + s.kunta) && s.street ? ', ' + s.street : ''} | Kaupat auki`,
     desc: `${s.name}, ${[s.street, s.postname].filter(Boolean).join(', ')}: aukioloajat tänään, juhlapyhien poikkeusajat (${nextHol.name.toLowerCase()} ${fiDate(nextHol.iso)})${s.flyer ? ' ja linkki tarjouslehteen' : ''}.`,
@@ -242,7 +251,7 @@ for (const s of allStores) {
     body: `${crumbHtml(cr)}<article class="store" data-s='${esc(JSON.stringify(compact(s, dates)))}' data-lat="${s.lat.toFixed(5)}" data-lon="${s.lon.toFixed(5)}" data-name="${esc(dispName(s))}">
 <div class="store-grid"><div class="store-main">
 <section class="answer">
-<span class="eyebrow"><a href="${chainP}">${esc(s.chain)}</a> · ${esc(s.kunta)}</span>
+<span class="eyebrow">${chainBadge(s)}<a href="${chainP}">${esc(s.chain)}</a> · ${esc(s.kunta)}</span>
 <h1>${esc(s.name)}</h1><p class="addr">${esc([s.street, [s.postcode, s.postname].filter(Boolean).join(' ')].filter(Boolean).join(', '))}</p>
 <div class="statusline"><span class="pill big unk" id="nowpill">Tänään</span><span class="nowtxt" id="nowtxt">${esc(dayText(s.sched[TODAY]))}</span></div>
 <p class="trust${s.chain !== 'Alko' && !s.src.official ? ' unv' : ''}">${s.chain !== 'Alko' && !s.src.official ? ICON.info : ICON.shield}${s.chain === 'Alko' ? 'Pyhäpäivät: Alkon tiedotteet · arkiajat: OpenStreetMap' : s.src.official ? `Lähde ${esc(s.src.name)} · haettu ${fiDateY(s.src.fetched)}` : 'OpenStreetMap · ei kaupan vahvistama'}</p>
@@ -256,7 +265,7 @@ ${holStrip}
 <p class="src">${srcTxt}</p>
 </div>
 <aside class="store-side" aria-label="Kartta ja lähimmät kaupat">
-<div class="mapbox" id="map" hidden><p class="maphint">Kartta ladataan…</p></div>
+${near.length ? `<div class="chips maponly">${mapBtn}</div>` : ''}${mapBox('near', false)}
 ${near.length ? `<h2>Lähellä tänään</h2>${tlList(near, TODAY, { id: 'near' })}<a class="more" href="${kP}">Kaikki kaupat: ${esc(s.kunta)} →</a>` : ''}
 </aside></div>
 </article>`
@@ -271,13 +280,13 @@ for (const k of kunnat) {
   put(`/kaupat/${ks}/`, layout({
     title: `Kaupat auki tänään – ${k} | Kaupungin ruokakaupat ja aukioloajat`,
     desc: `${k}: ${arr.length} ruokakauppaa (${chainsHere.slice(0, 5).join(', ')}). Mitkä kaupat ovat auki nyt, aukioloajat tänään ja juhlapyhinä.`,
-    canonical: `/kaupat/${ks}/`, jsonld: [crumbs(cr)],
+    canonical: `/kaupat/${ks}/`, jsonld: [crumbs(cr)], wide: true,
     body: `${crumbHtml(cr)}<h1>Kaupat auki tänään – ${esc(k)}</h1>
 <p class="lead">${arr.length} ruokakauppaa. Palkki näyttää aukiolon klo 6–24, sininen viiva on kellonaika nyt.</p>
 <div class="tabs"><span class="tab on">Tänään ${WD_FI[wdOf(TODAY)]} ${fiDate(TODAY)}</span>${HOL.slice(0, 5).map(h => `<a class="tab" href="/auki/${h.slug}/${ks}/">${esc(h.name)} ${fiDate(h.iso)}</a>`).join('')}</div>
-<div class="chips"><button type="button" class="chip" id="onlyopen" aria-pressed="false">Vain auki nyt</button><button type="button" class="chip" id="sortnear" aria-pressed="false">Lähimmät ensin</button></div>
-${alkoStrip(k, TODAY, null)}
-${tlList(arr, TODAY, { ad: true })}`
+<div class="chips"><button type="button" class="chip" id="onlyopen" aria-pressed="false">Vain auki nyt</button><button type="button" class="chip" id="sortnear" aria-pressed="false">Lähimmät ensin</button>${mapBtn}</div>
+<div class="split"><div class="split-list">${alkoStrip(k, TODAY, null)}
+${tlList(arr, TODAY, { ad: true })}</div><aside class="split-map" aria-label="Kartta">${mapBox('list', true)}</aside></div>`
   }));
 }
 // Kaupunkiluettelo
@@ -316,7 +325,7 @@ for (const h of HOL) {
     title: `Kaupat auki ${h.when} ${h.year} (${wd} ${fiDate(d)}) | Kaupat auki`,
     desc: `Mitkä kaupat ovat auki ${h.when} ${fiDateY(d)}? Prisman, K-Citymarketin, Lidlin, S-marketin ja K-Marketin aukioloajat kunnittain virallisista lähteistä.`,
     canonical: `/auki/${h.slug}/`, jsonld: [crumbs(cr)],
-    body: `${crumbHtml(cr)}<h1>Kaupat auki ${esc(h.when)} ${h.year}</h1>
+    body: `${crumbHtml(cr)}<h1${isXmas(h.slug) ? ' class="xm"' : ''}>${isXmas(h.slug) ? ICON.snow : ''}Kaupat auki ${esc(h.when)} ${h.year}</h1>
 <p class="lead">${esc(h.name)} on ${wd} ${fiDateY(d)}. ${esc(statusTxt)}</p>
 <h2>Valitse kunta</h2><div class="hols big">${BIG.map(k => `<a href="/auki/${h.slug}/${slugify(k)}/">${esc(k)}</a>`).join('')}<a href="#kaikki">Kaikki kunnat ↓</a></div>
 <h2>Ketjut ${esc(h.when)}</h2><table class="hours">${chainRows}</table>
@@ -331,12 +340,13 @@ ${XMAS_MD[h.slug] ? `<p><a href="/joulu/">Kaikki joulun ja uudenvuoden aukioloaj
     put(`/auki/${h.slug}/${ks}/`, layout({
       title: `Kaupat auki ${h.when} – ${k} ${h.year} | Kaupat auki`,
       desc: `${k}: mitkä kaupat ovat auki ${h.when} ${fiDateY(d)}? ${arr.length} ruokakaupan aukioloajat${pub ? ` – ${s3.open} kauppaa auki` : ''}. Päivittyy, kun kaupat julkaisevat poikkeusajat.`,
-      canonical: `/auki/${h.slug}/${ks}/`, jsonld: [crumbs(cr2)],
-      body: `${crumbHtml(cr2)}<h1>Kaupat auki ${esc(h.when)} – ${esc(k)}</h1>
+      canonical: `/auki/${h.slug}/${ks}/`, jsonld: [crumbs(cr2)], wide: true,
+      body: `${crumbHtml(cr2)}<h1${isXmas(h.slug) ? ' class="xm"' : ''}>${isXmas(h.slug) ? ICON.snow : ''}Kaupat auki ${esc(h.when)} – ${esc(k)}</h1>
 <p class="lead">${esc(h.name)} ${wd} ${fiDateY(d)}. ${pub ? `${s3.open} kauppaa auki, ${s3.closed} suljettu, ${s3.unk} ei vielä tietoa.` : `Kaupat eivät ole vielä julkaisseet tämän päivän aukioloaikoja. Sivu päivittyy automaattisesti, kun tieto julkaistaan.`}</p>
 <div class="tabs"><a class="tab" href="/kaupat/${ks}/">Tänään</a>${HOL.slice(0, 5).map(x => x === h ? `<span class="tab on">${esc(x.name)} ${fiDate(x.iso)}</span>` : `<a class="tab" href="/auki/${x.slug}/${ks}/">${esc(x.name)} ${fiDate(x.iso)}</a>`).join('')}</div>
-${alkoStrip(k, d, h)}
-${tlList(arr, d, { holiday: true, ad: true, label: `${h.name} ${fiDate(d)} · auki pisimpään ensin` })}
+<div class="chips maponly">${mapBtn}</div>
+<div class="split"><div class="split-list">${alkoStrip(k, d, h)}
+${tlList(arr, d, { holiday: true, ad: true, label: `${h.name} ${fiDate(d)} · auki pisimpään ensin` })}</div><aside class="split-map" aria-label="Kartta">${mapBox('list', true)}</aside></div>
 <p class="note">Näytämme vain kauppojen itse julkaisemat poikkeusajat. "Ei tietoa" tarkoittaa, ettei kauppa ole vielä julkaissut aikaa tai sille ei ole virallista lähdettä.</p>
 <div class="hols"><a href="/kaupat/${ks}/">${esc(k)}: aukioloajat tänään</a>${HOL.filter(x => x !== h).slice(0, 6).map(x => `<a href="/auki/${x.slug}/${ks}/">${esc(x.name)}</a>`).join('')}</div>`
     }));
@@ -430,7 +440,7 @@ if (XMAS.days.length) {
   const srcQ = 'Milloin ja mistä joulun ajat tulevat?';
   const ldFaq = [...faq, [srcQ, `${SRC_ROWS.map(([k, v]) => `${k}: ${v}`).join(' ')} Tarkistamme lähteet joka yö.`]];
   const groceryCell = (h, st) => `<a href="#${h.slug}">${[st.open && `${st.open} auki`, st.closed && `${st.closed} kiinni`].filter(Boolean).join(', ')}</a>`;
-  const alkoCell = d => { const x = chainDay('Alko', d); if (!x) return 'ei vielä julkaistu'; return x.n === x.N && x.topN === x.N ? `kaikki ${x.top}` : /sunnuntaisin/.test(x.top) ? 'sunnuntaimyymälät auki' : `${x.n} myymälää: ${x.top}`; };
+  const alkoCell = d => { const x = chainDay('Alko', d); if (!x) return 'ei vielä julkaistu'; return x.n === x.N && x.topN === x.N ? `kaikki ${x.top}` : /sunnuntaisin/.test(x.top) ? 'sunnuntaisin avoinna olevat auki' : `${x.n} myymälää: ${x.top}`; };
   // Peräkkäiset tyhjät ruokakauppasolut yhdistetään yhdeksi soluksi (rowspan), ettei sama teksti toistu riveittäin
   const empt = dayStats.map(({ st }) => !(st.open + st.closed));
   const runLen = i => { let n = 0; while (empt[i + n]) n++; return n; };
@@ -442,7 +452,7 @@ if (XMAS.days.length) {
     canonical: '/joulu/',
     jsonld: [crumbs(cr), { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: ldFaq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) }],
     body: `${crumbHtml(cr)}
-<section class="answer"><span class="eyebrow">Joulu ja uusi vuosi ${Y} · päivitetty ${BUILD_STAMP}</span><h1>Kaupat auki jouluna ${Y}</h1>
+<section class="answer xmas"><span class="eyebrow">${ICON.snow}Joulu ja uusi vuosi ${Y} · päivitetty ${BUILD_STAMP}</span><h1>Kaupat auki jouluna ${Y}</h1>
 <p class="big-ans">${esc(big)}</p>
 <p class="trust">${ICON.shield}Näytämme vain kauppojen ja ketjujen itse julkaisemat ajat. Emme arvaa.</p></section>
 <h2>Joulun ja uudenvuoden päivät</h2>
@@ -570,7 +580,7 @@ put('/', layout({
 <p>${stores.length.toLocaleString('fi')} ruokakaupan aukioloajat ja juhlapyhien poikkeusajat.</p>
 <button type="button" class="btn big" id="nearbtn">${ICON.nav}Lähimmät auki olevat kaupat</button>
 <p class="hint">Tai hae kauppaa tai kuntaa alareunan hakukentästä.</p></section>
-${XMAS_NAV ? `<a class="card xmas" href="/joulu/"><b>Kaupat auki jouluna ${XMAS.year}</b><span>Ketjujen joulun ja uudenvuoden aukioloajat yhdellä sivulla →</span></a>` : ''}
+${XMAS_NAV ? `<a class="card xmas" href="/joulu/"><b>${ICON.snow}Kaupat auki jouluna ${XMAS.year}</b><span>Ketjujen joulun ja uudenvuoden aukioloajat yhdellä sivulla →</span></a>` : ''}
 <h2>Juhlapyhät</h2><div class="hols big">${HOL.slice(0, 8).map(h => `<a href="/auki/${h.slug}/">${esc(h.name)} <small>${WD_FI[wdOf(h.iso)]} ${fiDate(h.iso)}</small></a>`).join('')}</div>
 <p><a href="/alko/${topHol.slug}/">Alko ${esc(topHol.when)} – kaikkien Alkojen aukioloajat →</a></p>
 <h2>Suurimmat kaupungit</h2><div class="hols">${BIG.slice(0, 16).map(k => `<a href="/kaupat/${slugify(k)}/">${esc(k)}</a>`).join('')}<a href="/kaupungit/">Kaikki kunnat →</a></div>
