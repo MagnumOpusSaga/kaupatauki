@@ -108,6 +108,8 @@ const BUILD_STAMP = fiDateY(TODAY);
 const ADS = !!(SITE.adsEnabled && SITE.adsenseClient);
 const AD_SLOTS = SITE.adSlots || {};
 const adUnit = (slot, cls = 'adbox') => ADS && slot ? `<aside class="${cls}" aria-label="Mainos"><span class="adlabel">Mainos</span><ins class="adsbygoogle" style="display:block" data-ad-client="${esc(SITE.adsenseClient)}" data-ad-slot="${esc(slot)}" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></aside>` : '';
+// Parkpenny kattaa nämä kaupungit (seuranta-agentti N16, 25.11.). city= tarvitaan, muuten Parkpenny avaa viimeksi käytetyn kaupungin.
+const PARK_CITIES = new Set(['Helsinki', 'Tampere']);
 const XMAS_NAV = ['11', '12'].includes(TODAY.slice(5, 7)) || TODAY.slice(5) <= '01-06';
 function layout({ title, desc, canonical, body, jsonld = [], extraHead = '', ads = true, wide = false }) {
   const robots = SITE.preview ? '<meta name="robots" content="noindex,nofollow">' : '';
@@ -245,6 +247,7 @@ for (const s of allStores) {
 <div class="statusline"><span class="pill big unk" id="nowpill">Tänään</span><span class="nowtxt" id="nowtxt">${esc(dayText(s.sched[TODAY]))}</span></div>
 <p class="trust${s.chain !== 'Alko' && !s.src.official ? ' unv' : ''}">${s.chain !== 'Alko' && !s.src.official ? ICON.info : ICON.shield}${s.chain === 'Alko' ? 'Pyhäpäivät: Alkon tiedotteet · arkiajat: OpenStreetMap' : s.src.official ? `Lähde ${esc(s.src.name)} · haettu ${fiDateY(s.src.fetched)}` : 'OpenStreetMap · ei kaupan vahvistama'}</p>
 <div class="acts2"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}" rel="noopener" target="_blank">${ICON.nav}Reitti</a>${s.flyer ? `<a class="btn ghost" href="${esc(s.flyer.url)}" rel="noopener" target="_blank" title="${s.flyer.kind === 'store-offers' ? 'Kaupan tarjoukset S-kaupat.fi:ssä' : s.flyer.kind === 'store' ? 'Tämän kaupan tarjouslehti k-ruoka.fi:ssä' : esc(s.chain) + '-tarjouslehti'}">${ICON.paper}${s.flyer.kind === 'store-offers' ? 'Tarjoukset' : 'Tarjouslehti'}</a>` : s.chain === 'Alko' && s.url ? `<a class="btn ghost" href="${esc(s.url)}" rel="noopener" target="_blank">${ICON.paper}Alko.fi</a>` : `<a class="btn ghost" href="#viikko">${ICON.cal}Viikon ajat</a>`}</div>
+${PARK_CITIES.has(s.kunta) ? `<p class="park"><a href="https://parkpenny.com/?city=${s.kunta.toLowerCase()}&amp;lat=${s.lat.toFixed(5)}&amp;lon=${s.lon.toFixed(5)}&amp;q=${encodeURIComponent(s.name)}&amp;dur=60" rel="noopener" target="_blank"><span class="pbadge" aria-hidden="true">P</span>Pysäköinti lähellä – hinnat Parkpennyssä ↗</a></p>` : ''}
 </section>
 ${holStrip}
 <div class="tables"><section><h2 id="viikko">Aukioloajat tällä viikolla</h2><table class="hours">${week}</table></section>

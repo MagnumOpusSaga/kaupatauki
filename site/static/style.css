@@ -377,3 +377,6 @@ main h3{font-size:16px;margin:16px 0 4px}
 @media (max-width:520px){.xt th,.xt td{padding:10px 8px;font-size:14px}.xt tbody th{width:34%}}
 .xt td.mid{vertical-align:middle;font-weight:500;color:var(--mut)}.xt td.mid small{display:block;font-size:12px;font-weight:400;margin-top:4px}
 .srct td{font-weight:400}
+/* Parkpenny-linkki (v9) */
+.park{margin:10px 0 0}.park a{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);text-decoration-color:var(--line);min-height:44px}
+.pbadge{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:5px;background:#1f5fbf;color:#fff;font-weight:700;font-size:13px}
