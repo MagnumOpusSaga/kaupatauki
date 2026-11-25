@@ -17,6 +17,8 @@ const DAYS_AHEAD = 28;
 const HOL = upcoming(TODAY);
 const HOL_BY_DATE = Object.fromEntries(HOL.map(h => [h.iso, h]));
 const allStores = JSON.parse(fs.readFileSync(STORES, 'utf8'));
+// Postinumeroalueiden nimet (Tilastokeskus, CC BY 4.0) → haku kaupunginosilla, esim. "lidl hervanta"
+const AREAS = JSON.parse(fs.readFileSync(path.join(ROOT, 'build', 'postialueet.json'), 'utf8')).areas;
 // Ruokakauppalistat ja -tilastot ilman Alkoa; Alkolla omat sivut (/ketju/alko/, /alko/<pyhä>/)
 const stores = allStores.filter(s => s.chain !== 'Alko');
 const alkos = allStores.filter(s => s.chain === 'Alko');
@@ -127,9 +129,9 @@ ${SITE.preview ? '<div class="preview">Esikatselu – sivusto ei ole vielä julk
 <nav>${XMAS_NAV ? `<a href="/joulu/" class="xm">${ICON.snow}Joulu</a>` : `<a href="/auki/${HOL.find(h => h.top)?.slug || HOL[0].slug}/">${esc(HOL.find(h => h.top)?.name || HOL[0].name)}</a>`}<a href="/tarjouslehdet/">Tarjouslehdet</a><a href="/kaupungit/">Kaupungit</a></nav></header>
 <main${wide ? ' class="wide"' : ''}>${body}${ads ? adUnit(AD_SLOTS.below) : ''}</main>
 <div class="dock"><div class="sheet" id="sheet" hidden><div class="sheethead"><b id="sheettitle">Tulokset</b><button type="button" id="sheetclose" class="x" aria-label="Sulje tulokset">${ICON.x}</button></div><ul class="list" id="results"></ul></div>
-<form class="bar" role="search" action="/kaupungit/"><label class="srch">${ICON.search}<input id="q" type="search" name="q" placeholder="Hae kauppaa tai kuntaa" autocomplete="off" aria-label="Hae kauppaa tai kuntaa"></label><button type="button" id="nearme" class="loc" aria-label="Näytä lähimmät auki olevat kaupat">${ICON.nav}</button></form></div>
+<form class="bar" role="search" action="/kaupungit/"><label class="srch">${ICON.search}<input id="q" type="search" name="q" placeholder="Hae kauppaa tai kuntaa" autocomplete="off" aria-label="Hae kauppaa tai kuntaa"></label><button type="submit" id="qgo" class="loc go" hidden>Hae</button><button type="button" id="nearme" class="loc" aria-label="Näytä lähimmät auki olevat kaupat" title="Lähimmät auki olevat kaupat">${ICON.nav}<span class="loctx">Lähellä</span></button></form></div>
 <footer><p><b>Kaupat auki</b> kokoaa ruokakauppojen aukioloajat ja juhlapyhien poikkeusajat ketjujen virallisista lähteistä. Palvelu ei ole kauppaketjujen virallinen palvelu – tarkista kiireellinen tieto kaupalta.</p>
-<p>Lähteet: S-kaupat.fi, Lidl.fi, Tokmanni.fi sekä © <a href="https://www.openstreetmap.org/copyright">OpenStreetMapin tekijät</a> (ODbL). Kuntarajat © Tilastokeskus (CC BY 4.0). Päivitetty ${BUILD_STAMP}.</p>
+<p>Lähteet: S-kaupat.fi, Lidl.fi, Tokmanni.fi sekä © <a href="https://www.openstreetmap.org/copyright">OpenStreetMapin tekijät</a> (ODbL). Kuntarajat ja postinumeroalueet © Tilastokeskus (CC BY 4.0). Päivitetty ${BUILD_STAMP}.</p>
 <p><a href="/tietoa/">Tietoa ja lähteet</a> · <a href="/aukiololaki/">Aukiololaki</a> · <a href="/tietosuoja/">Tietosuoja</a>${ADS ? ' · <a href="#" id="consentlink">Evästeasetukset</a>' : ''} · ${esc(SITE.email)}</p>
 <p>© ${TODAY.slice(0, 4)} ${esc(SITE.owner)}</p></footer>
 <script src="/app.js?v=${SITE.version}" defer></script></body></html>`;
@@ -159,7 +161,7 @@ const ICON = {
 };
 // Ketjumerkki: ryhmän kirjain ja tunnusväri (ei logoja). S-ryhmä (myös ABC), K-ryhmä, Lidl, Tokmanni, Alko, M-ketju…
 const CB_GROUP = c => /^(Prisma|S-market|Sale|Alepa|ABC|Food Market Herkku)$/.test(c) ? ['S', 's'] : /^K-/.test(c) ? ['K', 'k'] : c === 'Lidl' ? ['L', 'l'] : c === 'Tokmanni' ? ['T', 't'] : c === 'Alko' ? ['A', 'a'] : c === 'M-ketju' ? ['M', 'm'] : c === 'Minimani' ? ['Mi', 'mi'] : c === 'Halpa-Halli' ? ['H', 'h'] : null;
-const chainBadge = s => { const g = CB_GROUP(s.chain); const [t, c] = g || [(s.name.trim()[0] || '•').toUpperCase(), 'o']; return `<b class="cb cb-${c}" aria-hidden="true">${esc(t)}</b>`; };
+const chainBadge = s => { const g = CB_GROUP(s.chain); const [t, c] = g || [(s.name.trim()[0] || '•').toUpperCase(), 'o']; return `<b class="cb cb-${c}" data-t="${esc(t)}" aria-hidden="true"></b>`; };
 // Kartta: puhelimella napautuksella, tietokoneella aina (app.js)
 const mapBox = (list, tall) => `<div class="mapbox${tall ? ' tall' : ''}" id="map" data-list="${list}" hidden><p class="maphint">Kartta ladataan…</p></div>`;
 const mapBtn = `<button type="button" class="chip mapbtn" aria-controls="map" aria-expanded="false">${ICON.map}<span>Näytä kartalla</span></button>`;
@@ -248,7 +250,7 @@ for (const s of allStores) {
     title: `${s.name} aukioloajat${s.kunta && !s.name.includes(s.kunta) ? ' ' + s.kunta : ''}${DUP_NAME.has(s.name + '|' + s.kunta) && s.street ? ', ' + s.street : ''} | Kaupat auki`,
     desc: `${s.name}, ${[s.street, s.postname].filter(Boolean).join(', ')}: aukioloajat tänään, juhlapyhien poikkeusajat (${nextHol.name.toLowerCase()} ${fiDate(nextHol.iso)})${s.flyer ? ' ja linkki tarjouslehteen' : ''}.`,
     canonical: `/kauppa/${s.slug}/`, jsonld: [ld, crumbs(cr)], wide: true,
-    body: `${crumbHtml(cr)}<article class="store" data-s='${esc(JSON.stringify(compact(s, dates)))}' data-lat="${s.lat.toFixed(5)}" data-lon="${s.lon.toFixed(5)}" data-name="${esc(dispName(s))}">
+    body: `${crumbHtml(cr)}<article class="store" data-s='${esc(JSON.stringify(compact(s, [...new Set([...dates, ...HOL.map(h => h.iso)])])))}' data-lat="${s.lat.toFixed(5)}" data-lon="${s.lon.toFixed(5)}" data-name="${esc(dispName(s))}">
 <div class="store-grid"><div class="store-main">
 <section class="answer">
 <span class="eyebrow">${chainBadge(s)}<a href="${chainP}">${esc(s.chain)}</a> · ${esc(s.kunta)}</span>
@@ -629,7 +631,7 @@ fs.cpSync(path.join(ROOT, 'static'), DIST, { recursive: true });
 fs.mkdirSync(path.join(DIST, 'data'), { recursive: true });
 fs.writeFileSync(path.join(DIST, 'data/stores.json'), JSON.stringify({
   license: 'Sisältää OpenStreetMap-tietoa © OpenStreetMapin tekijät, ODbL 1.0. Lähteet: S-kaupat.fi, Lidl.fi, Tokmanni.fi, Alkon tiedotteet.', built: TODAY,
-  stores: allStores.map(s => [s.slug, dispName(s), s.kunta, +s.lat.toFixed(5), +s.lon.toFixed(5), s.street, compact(s, next7)])
+  stores: allStores.map(s => [s.slug, dispName(s), s.kunta, +s.lat.toFixed(5), +s.lon.toFixed(5), s.street, compact(s, next7), AREAS[s.postcode] || ''])
 }));
 const sitemapUrls = pages.filter(x => !x.p.endsWith('.html')).map(x => x.p);
 const chunks = []; for (let i = 0; i < sitemapUrls.length; i += 40000) chunks.push(sitemapUrls.slice(i, i + 40000));

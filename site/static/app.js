@@ -8,6 +8,8 @@
   const shift = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
   const ranges = v => v ? v.split(',').map(r => r.split('-')) : [];
   const WD = ['su', 'ma', 'ti', 'ke', 'to', 'pe', 'la'];
+  // sama kuin build.mjs:n slugify
+  const slugify = s => s.toLowerCase().replace(/[äå]/g, 'a').replace(/ö/g, 'o').normalize('NFKD').replace(/[^\w\s-]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const wd = d => WD[new Date(d + 'T12:00:00Z').getUTCDay()];
 
   // Tila: state open | soon | closed | unk; pill = iso sana; detail = loppu; short = listarivi
@@ -94,16 +96,16 @@
   function render(rows, la, lo) {
     res.innerHTML = '';
     if (!rows.length) { const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'Ei osumia. Kokeile kunnan tai ketjun nimeä.'; res.appendChild(li); return; }
-    for (const [slug, name, kunta, lat, lon, street, sched] of rows) {
+    for (const [slug, name, kunta, lat, lon, street, sched, area] of rows) {
       const st = status(sched), li = document.createElement('li');
       li.className = 'st ' + st.state;
       li.innerHTML = '<a><span class="nm"></span><span class="hr"></span><span class="ad"></span></a>';
       li.querySelector('a').href = `/kauppa/${slug}/`;
       li.querySelector('.nm').textContent = name;
       const g = /^(Prisma|S-market|Sale|Alepa|ABC|Food Market Herkku)/.test(name) ? ['S', 's'] : /^K-/.test(name) ? ['K', 'k'] : /^Lidl/.test(name) ? ['L', 'l'] : /^Tokmanni/.test(name) ? ['T', 't'] : /^Alko/.test(name) ? ['A', 'a'] : /^M-/.test(name) ? ['M', 'm'] : /^Minimani/.test(name) ? ['Mi', 'mi'] : /^Halpa-Halli/.test(name) ? ['H', 'h'] : [(name.trim()[0] || '•').toUpperCase(), 'o'];
-      const cb = document.createElement('b'); cb.className = 'cb cb-' + g[1]; cb.setAttribute('aria-hidden', 'true'); cb.textContent = g[0]; li.querySelector('.nm').prepend(cb);
+      const cb = document.createElement('b'); cb.className = 'cb cb-' + g[1]; cb.setAttribute('aria-hidden', 'true'); cb.dataset.t = g[0]; li.querySelector('.nm').prepend(cb);
       li.querySelector('.hr').textContent = st.short;
-      li.querySelector('.ad').textContent = (la != null ? km(dist(la, lo, lat, lon)) + ' · ' : '') + [street, kunta].filter(Boolean).join(', ');
+      li.querySelector('.ad').textContent = (la != null ? km(dist(la, lo, lat, lon)) + ' · ' : '') + [street, area && !area.includes(kunta) ? area : '', kunta].filter(Boolean).join(', ');
       res.appendChild(li);
     }
   }
@@ -121,13 +123,39 @@
   document.getElementById('nearbtn')?.addEventListener('click', nearMe);
   document.getElementById('sheetclose')?.addEventListener('click', () => { sheet.hidden = true; });
   if (q) {
-    q.closest('form').addEventListener('submit', e => e.preventDefault());
+    // Enter / Hae: kunnan nimi → kuntasivu, yksi osuma → kauppasivu, muuten tulokset auki
+    const go = document.getElementById('qgo'), near = document.getElementById('nearme');
+    const syncBtn = () => { const has = q.value.trim().length > 0; go.hidden = !has; near.hidden = has; };
+    q.closest('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const v = q.value.trim().toLowerCase(); if (!v) return;
+      const all = await load();
+      const kunnat = [...new Set(all.map(r => r[2]))];
+      const exact = kunnat.find(k => k.toLowerCase() === v || slugify(k) === slugify(v));
+      const pref = kunnat.filter(k => k.toLowerCase().startsWith(v));
+      if (exact || (pref.length === 1 && v.length >= 3)) { location.href = '/kaupat/' + slugify(exact || pref[0]) + '/'; return; }
+      const links = res.querySelectorAll('li.st a, li.kunta a');
+      if (links.length === 1) { location.href = links[0].href; return; }
+      if (links.length) links[0].focus();
+    });
+    q.addEventListener('input', syncBtn); syncBtn();
     q.addEventListener('input', async () => {
       const v = q.value.trim().toLowerCase(); if (v.length < 2) { sheet.hidden = true; return; }
       const all = await load(), words = v.split(/\s+/);
       const score = r => { const n = r[1].toLowerCase(); return (words.every(w => n.includes(w)) ? 0 : 1) + (n.startsWith(words[0]) ? 0 : 0.5); };
-      const hits = all.filter(r => { const h = (r[1] + ' ' + r[2] + ' ' + (r[5] || '')).toLowerCase(); return words.every(w => h.includes(w)); }).sort((a, b) => score(a) - score(b));
-      openSheet(hits.length ? `${hits.length} kauppaa` : 'Ei osumia'); render(hits.slice(0, 30));
+      const hits = all.filter(r => { const h = (r[1] + ' ' + r[2] + ' ' + (r[5] || '') + ' ' + (r[7] || '')).toLowerCase(); return words.every(w => h.includes(w)); }).sort((a, b) => score(a) - score(b));
+      // Kunnan nimi haussa → kuntasivu ensimmäiseksi riviksi
+      const kc = {}; for (const r of all) if (!/^Alko /.test(r[1])) kc[r[2]] = (kc[r[2]] || 0) + 1;
+      const kHits = v.length >= 3 ? Object.keys(kc).filter(k => k.toLowerCase().startsWith(v)).sort((a, b) => kc[b] - kc[a]).slice(0, 2) : [];
+      openSheet(hits.length ? `${hits.length} kauppaa` : kHits.length ? 'Kunnat' : 'Ei osumia'); render(hits.slice(0, 30));
+      if (kHits.length && res.firstChild?.classList.contains('empty')) res.innerHTML = '';
+      kHits.reverse().forEach(k => {
+        const li = document.createElement('li'); li.className = 'kunta';
+        li.innerHTML = '<a><span class="nm"></span><span class="ad"></span></a>';
+        li.querySelector('a').href = '/kaupat/' + slugify(k) + '/';
+        li.querySelector('.nm').textContent = k + ' – kaikki kaupat →'; li.querySelector('.ad').textContent = kc[k] + ' ruokakauppaa, aukioloajat tänään ja pyhinä';
+        res.prepend(li);
+      });
     });
   }
   // Kartta: MapLibre + OpenFreeMap. Tietokoneella (≥1000 px) heti, puhelimella vasta "Näytä kartalla" -napista.

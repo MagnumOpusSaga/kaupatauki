@@ -415,3 +415,12 @@ h1.xm{display:flex;align-items:flex-start;gap:10px}h1.xm .ic{width:.8em;height:.
 .mpin.main{max-width:min(78vw,420px)}.mpin.main .lb{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .xt th,.xt td{overflow-wrap:anywhere}
 @media (max-width:520px){.xt tbody th a{font-size:13.5px}}
+/* v11: ketjumerkin kirjain CSS:llä (ei mukana kopioitavassa tekstissä), kunta-osuma haussa */
+.cb::before{content:attr(data-t)}
+#results li.kunta a{display:flex;flex-direction:column;gap:2px;padding:12px 14px;min-height:56px;justify-content:center;text-decoration:none;color:var(--g-d);background:var(--g2);border-radius:12px;margin:4px 0 8px}
+#results li.kunta .nm{font-weight:750}#results li.kunta .ad{color:var(--mut);font-size:13px}
+/* v11: haun nappi – kirjoittaessa "Hae", muuten sijaintinappi tekstillä "Lähellä" */
+.loc[hidden]{display:none}
+.loc{flex-direction:column;gap:1px}.loc .loctx{font-size:10.5px;font-weight:700;line-height:1;letter-spacing:.01em}.loc .ic{width:20px;height:20px}
+.loc.go{font-weight:750;font-size:15px;width:auto;min-width:64px;padding:0 14px}
+@media (min-width:1000px){.loc .loctx{display:none}.loc .ic{width:22px;height:22px}}

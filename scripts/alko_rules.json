@@ -1,30 +1,250 @@
 {
-  "_comment": "Alkon omien STT-tiedotteiden tosiasiat. Myymäläkohtaiset arkiajat tulevat OpenStreetMapista (ei vahvistettu). Päivitä, kun Alko julkaisee uusia tietoja.",
-  "sources": {
-    "q3": {"name": "Alkon tiedote 14.10.2026", "url": "https://www.sttinfo.fi/tiedote/72408468/alkon-q3-myynti-punaviini-yllatti-ja-sunnuntaista-tuli-uusi-ostospaiva?lang=fi"},
-    "kesa": {"name": "Alkon tiedote 23.6.2026", "url": "https://www.sttinfo.fi/tiedote/72153818/alkoholilain-muutos-mahdollistaa-alkon-myymaloiden-laajemmat-aukioloajat-108-myymalan-aukioloajat-laajenevat-lauantaista-47-alkaen?lang=fi"},
-    "syksy": {"name": "Alkon tiedote 20.8.2026", "url": "https://www.sttinfo.fi/tiedote/72245486/"}
+ "_comment": "Alkon omien STT-tiedotteiden tosiasiat. Myymäläkohtaiset arkiajat tulevat OpenStreetMapista (ei vahvistettu). Päivitä, kun Alko julkaisee uusia tietoja.",
+ "sources": {
+  "q3": {
+   "name": "Alkon tiedote 14.10.2026",
+   "url": "https://www.sttinfo.fi/tiedote/72408468/alkon-q3-myynti-punaviini-yllatti-ja-sunnuntaista-tuli-uusi-ostospaiva?lang=fi"
   },
-  "sunday_12_18": {
-    "src": ["kesa", "syksy"],
-    "stores": ["Espoo Leppävaara Sello", "Espoo Matinkylä Iso Omena", "Espoo Tapiola Ainoa", "Helsinki Itäkeskus Easton", "Helsinki Kannelmäki Kaari", "Helsinki keskusta Kamppi", "Helsinki Pasila Tripla", "Hyvinkää Willa Citymarket", "Hämeenlinna Tiiriö Citymarket", "Joensuu Käpykangas Prisma", "Jyväskylä Keljo Keljon kauppakeskus", "Jyväskylä Seppä", "Järvenpää Citymarket", "Kajaani Prisma", "Kirkkonummi Munkinmäki Prisma", "Kokkola Kosila Prisma", "Kotka Sutela Prisma", "Kouvola Korjala Prisma", "Kuopio Savilahti Prisma", "Lahti Laune Prisma", "Lappeenranta Leiri Prisma", "Mikkeli Graani", "Oulu Limingantulli", "Pori Länsi-Pori", "Porvoo Näsi", "Rovaniemi keskusta", "Salo keskusta", "Seinäjoki keskusta Megakeskus", "Tampere Kaleva Prisma", "Tampere Sokos", "Turku keskusta Wiklund", "Turku Kupittaa", "Vaasa Asevelikylä Prisma", "Vantaa Pakkala Jumbo", "Vihti Nummela Citymarket",
-               "Espoo Espoonlahti Lippulaiva", "Helsinki Herttoniemi Hertta", "Iisalmi", "Kerava Prisma", "Kuopio keskusta Sokos", "Lahti Syke", "Lohja Ojamo", "Nurmijärvi Klaukkala Citymarket", "Oulu Kaakkuri", "Oulu Rusko Citymarket", "Pirkkala Partola", "Raisio Mylly", "Rauma keskusta", "Riihimäki Atomikortteli", "Tampere Lielahti Citymarket", "Turku Itäharju", "Turku Länsikeskus Citymarket", "Tuusula Hyrylä", "Vantaa Tammisto", "Varkaus"]
+  "kesa": {
+   "name": "Alkon tiedote 23.6.2026",
+   "url": "https://www.sttinfo.fi/tiedote/72153818/alkoholilain-muutos-mahdollistaa-alkon-myymaloiden-laajemmat-aukioloajat-108-myymalan-aukioloajat-laajenevat-lauantaista-47-alkaen?lang=fi"
   },
-  "saturday_9_21": {
-    "src": ["kesa"],
-    "stores": ["Helsinki Hakaniemi Ympyrätalo", "Helsinki Herttoniemi Hertta", "Helsinki Itäkeskus Easton", "Helsinki Kalasatama Redi", "Helsinki Kannelmäki Kaari", "Helsinki Käpylä", "Helsinki Lauttasaari", "Helsinki Malmi Nova", "Helsinki Pasila Tripla", "Helsinki Ruoholahti", "Helsinki Vuosaari Columbus", "Helsinki keskusta Arkadia", "Helsinki keskusta Citycenter", "Helsinki keskusta Kamppi", "Järvenpää Citymarket", "Jyväskylä Keljo Keljon kauppakeskus", "Jyväskylä keskusta Sokkari", "Kerava Prisma", "Kirkkonummi Munkinmäki Prisma", "Kokkola keskusta K-Supermarket", "Kuopio keskusta Sokos", "Oulu Kaakkuri", "Oulu Limingantulli", "Oulu Välivainio", "Oulu keskusta Pekuri", "Pirkkala Partola", "Porvoo Näsi", "Tampere Kaleva Prisma", "Tampere Lielahti Citymarket", "Tampere Linnainmaa Prisma", "Tampere Ratina", "Tampere Sokos", "Tampere Stockmann", "Turku Itäharju", "Turku Kupittaa", "Turku keskusta Stockmann", "Turku keskusta Wiklund", "Vaasa keskusta Citymarket", "Vantaa Hämeenkylä", "Vantaa Koivukylä Citymarket", "Vantaa Myyrmäki Myyrmanni", "Vantaa Pakkala Jumbo", "Vantaa Tammisto Citymarket", "Vantaa Tikkurila", "Vihti Nummela Citymarket", "Espoo Espoonlahti Lippulaiva", "Espoo Leppävaara Sello", "Espoo Matinkylä Iso Omena", "Espoo Olari Prisma", "Espoo Tapiola Ainoa"]
-  },
-  "saturday_9_20": {
-    "src": ["kesa"],
-    "stores": ["Hämeenlinna Tiiriö Citymarket", "Hyvinkää Willa Citymarket", "Iisalmi", "Järvenpää Prisma", "Joensuu keskusta Sokos", "Joensuu Käpykangas Prisma", "Joensuu Pilkko Citymarket", "Jyväskylä Palokka Prisma", "Kajaani Prisma", "Kaarina", "Kangasala Prisma", "Kokkola Kosila Prisma", "Kotka Sutela Prisma", "Kouvola Korjala Prisma", "Kuopio Savilahti Prisma", "Lahti Holma", "Lahti Laune Prisma", "Lahti Syke", "Lappeenranta Leiri Prisma", "Lohja Ojamo", "Mikkeli Graani", "Mäntsälä", "Naantali", "Nokia", "Nurmijärvi Klaukkala Citymarket", "Oulu Linnanmaa", "Oulu Rusko Citymarket", "Pietarsaari", "Pori Itäkeskus Prisma", "Pori Länsi-Pori", "Porvoo Tarmola", "Rauma keskusta", "Raahe", "Raisio keskusta", "Raisio Mylly", "Riihimäki Atomikortteli", "Rovaniemi Eteläkeskus", "Rovaniemi keskusta", "Salo Halikko", "Salo keskusta", "Savonlinna Nojanmaa Prisma", "Seinäjoki keskusta Megakeskus", "Seinäjoki Nurmo Prisma", "Seinäjoki Pohja Minimani", "Tampere Hervanta Duo", "Tampere Tammela Stadion", "Tampere Tesoma", "Tampere Turtola Citymarket", "Turku Länsikeskus Citymarket", "Turku Manhattan", "Turku Skanssi", "Turku Tampereentie", "Tuusula Hyrylä", "Vaasa Asevelikylä Prisma", "Vaasa Kivihaka Citymarket", "Vaasa Liisanlehto", "Ylivieska", "Ylöjärvi"]
-  },
-  "holidays": [
-    {"date": "2026-12-06", "who": "sunday", "src": "q3"},
-    {"date": "2026-12-24", "who": "all", "text": "auki klo 13 asti", "close": "13:00", "src": "q3"},
-    {"date": "2026-12-25", "who": "all", "r": [], "src": "q3"},
-    {"date": "2026-12-26", "who": "sunday", "src": "q3"},
-    {"date": "2026-12-31", "who": "all", "text": "auki vähintään klo 18 asti", "close": "18:00", "src": "q3"},
-    {"date": "2027-01-01", "who": "sunday", "src": "q3"},
-    {"date": "2027-01-06", "who": "sunday", "src": "q3"}
+  "syksy": {
+   "name": "Alkon tiedote 20.8.2026",
+   "url": "https://www.sttinfo.fi/tiedote/72245486/"
+  }
+ },
+ "sunday_12_18": {
+  "src": [
+   "kesa",
+   "syksy"
+  ],
+  "stores": [
+   "Espoo Leppävaara Sello",
+   "Espoo Matinkylä Iso Omena",
+   "Espoo Tapiola Ainoa",
+   "Helsinki Itäkeskus Easton",
+   "Helsinki Kannelmäki Kaari",
+   "Helsinki keskusta Kamppi",
+   "Helsinki Pasila Tripla",
+   "Hyvinkää Willa Citymarket",
+   "Hämeenlinna Tiiriö Citymarket",
+   "Joensuu Käpykangas Prisma",
+   "Jyväskylä Keljo Keljon kauppakeskus",
+   "Jyväskylä Seppä",
+   "Järvenpää Citymarket",
+   "Kajaani Prisma",
+   "Kirkkonummi Munkinmäki Prisma",
+   "Kokkola Kosila Prisma",
+   "Kotka Sutela Prisma",
+   "Kouvola Korjala Prisma",
+   "Kuopio Savilahti Prisma",
+   "Lahti Laune Prisma",
+   "Lappeenranta Leiri Prisma",
+   "Mikkeli Graani",
+   "Oulu Limingantulli",
+   "Pori Länsi-Pori",
+   "Porvoo Näsi",
+   "Rovaniemi keskusta",
+   "Salo keskusta",
+   "Seinäjoki keskusta Megakeskus",
+   "Tampere Kaleva Prisma",
+   "Tampere Sokos",
+   "Turku keskusta Wiklund",
+   "Turku Kupittaa",
+   "Vaasa Asevelikylä Prisma",
+   "Vantaa Pakkala Jumbo",
+   "Vihti Nummela Citymarket",
+   "Espoo Espoonlahti Lippulaiva",
+   "Helsinki Herttoniemi Hertta",
+   "Iisalmi",
+   "Kerava Prisma",
+   "Kuopio keskusta Sokos",
+   "Lahti Syke",
+   "Lohja Ojamo",
+   "Nurmijärvi Klaukkala Citymarket",
+   "Oulu Kaakkuri",
+   "Oulu Rusko Citymarket",
+   "Pirkkala Partola",
+   "Raisio Mylly",
+   "Rauma keskusta",
+   "Riihimäki Atomikortteli",
+   "Tampere Lielahti Citymarket",
+   "Turku Itäharju",
+   "Turku Länsikeskus Citymarket",
+   "Tuusula Hyrylä",
+   "Vantaa Tammisto",
+   "Varkaus"
   ]
+ },
+ "saturday_9_21": {
+  "src": [
+   "kesa"
+  ],
+  "stores": [
+   "Helsinki Hakaniemi Ympyrätalo",
+   "Helsinki Herttoniemi Hertta",
+   "Helsinki Itäkeskus Easton",
+   "Helsinki Kalasatama Redi",
+   "Helsinki Kannelmäki Kaari",
+   "Helsinki Käpylä",
+   "Helsinki Lauttasaari",
+   "Helsinki Malmi Nova",
+   "Helsinki Pasila Tripla",
+   "Helsinki Ruoholahti",
+   "Helsinki Vuosaari Columbus",
+   "Helsinki keskusta Arkadia",
+   "Helsinki keskusta Citycenter",
+   "Helsinki keskusta Kamppi",
+   "Järvenpää Citymarket",
+   "Jyväskylä Keljo Keljon kauppakeskus",
+   "Jyväskylä keskusta Sokkari",
+   "Kerava Prisma",
+   "Kirkkonummi Munkinmäki Prisma",
+   "Kokkola keskusta K-Supermarket",
+   "Kuopio keskusta Sokos",
+   "Oulu Kaakkuri",
+   "Oulu Limingantulli",
+   "Oulu Välivainio",
+   "Oulu keskusta Pekuri",
+   "Pirkkala Partola",
+   "Porvoo Näsi",
+   "Tampere Kaleva Prisma",
+   "Tampere Lielahti Citymarket",
+   "Tampere Linnainmaa Prisma",
+   "Tampere Ratina",
+   "Tampere Sokos",
+   "Tampere Stockmann",
+   "Turku Itäharju",
+   "Turku Kupittaa",
+   "Turku keskusta Stockmann",
+   "Turku keskusta Wiklund",
+   "Vaasa keskusta Citymarket",
+   "Vantaa Hämeenkylä",
+   "Vantaa Koivukylä Citymarket",
+   "Vantaa Myyrmäki Myyrmanni",
+   "Vantaa Pakkala Jumbo",
+   "Vantaa Tammisto Citymarket",
+   "Vantaa Tikkurila",
+   "Vihti Nummela Citymarket",
+   "Espoo Espoonlahti Lippulaiva",
+   "Espoo Leppävaara Sello",
+   "Espoo Matinkylä Iso Omena",
+   "Espoo Olari Prisma",
+   "Espoo Tapiola Ainoa"
+  ]
+ },
+ "saturday_9_20": {
+  "src": [
+   "kesa"
+  ],
+  "stores": [
+   "Hämeenlinna Tiiriö Citymarket",
+   "Hyvinkää Willa Citymarket",
+   "Iisalmi",
+   "Järvenpää Prisma",
+   "Joensuu keskusta Sokos",
+   "Joensuu Käpykangas Prisma",
+   "Joensuu Pilkko Citymarket",
+   "Jyväskylä Palokka Prisma",
+   "Kajaani Prisma",
+   "Kaarina",
+   "Kangasala Prisma",
+   "Kokkola Kosila Prisma",
+   "Kotka Sutela Prisma",
+   "Kouvola Korjala Prisma",
+   "Kuopio Savilahti Prisma",
+   "Lahti Holma",
+   "Lahti Laune Prisma",
+   "Lahti Syke",
+   "Lappeenranta Leiri Prisma",
+   "Lohja Ojamo",
+   "Mikkeli Graani",
+   "Mäntsälä",
+   "Naantali",
+   "Nokia",
+   "Nurmijärvi Klaukkala Citymarket",
+   "Oulu Linnanmaa",
+   "Oulu Rusko Citymarket",
+   "Pietarsaari",
+   "Pori Itäkeskus Prisma",
+   "Pori Länsi-Pori",
+   "Porvoo Tarmola",
+   "Rauma keskusta",
+   "Raahe",
+   "Raisio keskusta",
+   "Raisio Mylly",
+   "Riihimäki Atomikortteli",
+   "Rovaniemi Eteläkeskus",
+   "Rovaniemi keskusta",
+   "Salo Halikko",
+   "Salo keskusta",
+   "Savonlinna Nojanmaa Prisma",
+   "Seinäjoki keskusta Megakeskus",
+   "Seinäjoki Nurmo Prisma",
+   "Seinäjoki Pohja Minimani",
+   "Tampere Hervanta Duo",
+   "Tampere Tammela Stadion",
+   "Tampere Tesoma",
+   "Tampere Turtola Citymarket",
+   "Turku Länsikeskus Citymarket",
+   "Turku Manhattan",
+   "Turku Skanssi",
+   "Turku Tampereentie",
+   "Tuusula Hyrylä",
+   "Vaasa Asevelikylä Prisma",
+   "Vaasa Kivihaka Citymarket",
+   "Vaasa Liisanlehto",
+   "Ylivieska",
+   "Ylöjärvi"
+  ]
+ },
+ "holidays": [
+  {
+   "date": "2026-12-06",
+   "who": "sunday",
+   "src": "q3"
+  },
+  {
+   "date": "2026-12-20",
+   "who": "extra_sunday",
+   "src": "q3",
+   "note": "Alkon mukaan sunnuntaina 20.12. auki on yli 140 myymälää – muiden kuin sunnuntaimyymälöiden aika ei ole tiedossa"
+  },
+  {
+   "date": "2026-12-24",
+   "who": "all",
+   "text": "auki klo 13 asti",
+   "close": "13:00",
+   "src": "q3"
+  },
+  {
+   "date": "2026-12-25",
+   "who": "all",
+   "r": [],
+   "src": "q3"
+  },
+  {
+   "date": "2026-12-26",
+   "who": "sunday",
+   "src": "q3"
+  },
+  {
+   "date": "2026-12-31",
+   "who": "all",
+   "text": "auki vähintään klo 18 asti",
+   "close": "18:00",
+   "src": "q3"
+  },
+  {
+   "date": "2027-01-01",
+   "who": "sunday",
+   "src": "q3"
+  },
+  {
+   "date": "2027-01-06",
+   "who": "sunday",
+   "src": "q3"
+  }
+ ]
 }

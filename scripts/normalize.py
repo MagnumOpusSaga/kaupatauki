@@ -272,6 +272,10 @@ for i, (x, t, k, full) in enumerate(alko_osm):
         if h['who'] == 'all':
             e = {'date': h['date'], 'r': h.get('r'), 'note': src['name']}
             if 'text' in h: e.update(r=None, text=h['text'], close=h.get('close'))
+        elif h['who'] == 'extra_sunday':
+            # Tavallista useampi Alko auki sunnuntaina (esim. 20.12.): sunnuntaimyymälät normaalisti, muista ei väitetä mitään
+            if in_['sunday_12_18']: continue
+            e = {'date': h['date'], 'r': None, 'level': 'u', 'note': f"{src['name']}: {h.get('note', 'tavallista useampi Alko auki')}"}
         elif in_['sunday_12_18']:
             e = {'date': h['date'], 'r': None, 'text': 'auki (sunnuntaisin avoinna oleva Alko)', 'note': src['name']}
         else:
