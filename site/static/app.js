@@ -227,3 +227,69 @@
     }));
   }
 })();
+
+// K2-C: evästeetön mittaus – vain päiväkohtaiset summat, ei tunnisteita (ks. /tietosuoja/)
+(() => {
+  if (location.hostname !== 'kaupatauki.fi' || navigator.webdriver) return;
+  const B = document.body, pt = (B.dataset.pt || 'sisalto').replace(/[^a-zA-Z]/g, '').toLowerCase().slice(0, 12), v = B.dataset.v;
+  const send = (k, key) => { try { navigator.sendBeacon('/api/e', JSON.stringify({ k, key })); } catch (e) { /* ei mitään */ } };
+  let ext = true; try { ext = !document.referrer || new URL(document.referrer).hostname !== location.hostname; } catch (e) { /* */ }
+  send('view', pt + (v != null ? ':' + (v === '1' ? 'vahv' : 'eivahv') : ''));
+  if (ext) send('entry', pt);
+  const t0 = Date.now(); let acted = false, done = false;
+  const kind = a => {
+    const u = new URL(a.href, location.href), h = u.hostname;
+    if (/(^|\.)google\.[a-z.]+$/.test(h) && u.pathname.startsWith('/maps')) return 'reitti';
+    if (h.endsWith('parkpenny.com')) return 'parkpenny';
+    if (h.endsWith('alko.fi') || (h === location.hostname && u.pathname.startsWith('/alko/'))) return 'alko';
+    if (h !== location.hostname && (/tarjou|lehti/i.test(a.textContent + ' ' + (a.title || '')) || location.pathname.startsWith('/tarjouslehti'))) return 'tarjouslehti';
+    return null;
+  };
+  document.addEventListener('click', e => {
+    acted = true;
+    const a = e.target.closest && e.target.closest('a[href]'); if (!a) return;
+    const k = kind(a); if (k) send('click', k + ':' + pt);
+  }, true);
+  ['scroll', 'keydown'].forEach(t => addEventListener(t, () => { if (Date.now() - t0 > 1500) acted = true; }, { once: true, passive: true }));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden' || done) return; done = true;
+    if (ext && !acted && Date.now() - t0 < 10000) send('exit', 'quick:' + pt);
+  });
+})();
+
+// K2-B: "Ilmoita, kun jouluajat julkaistaan" (Web Push ilman sisältöä; ei sähköpostia)
+(() => {
+  const box = document.querySelector('.notify'); if (!box) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window) || !box.dataset.k) return;
+  if (Notification.permission === 'denied') return;
+  const slug = box.dataset.slug, btn = box.querySelector('button'), lbl = btn.querySelector('span'), small = box.querySelector('small');
+  const name = (document.querySelector('h1') || {}).textContent || '';
+  const key = Uint8Array.from(atob(box.dataset.k.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+  const LS = 'ka-notify';
+  const mine = () => { try { return JSON.parse(localStorage.getItem(LS) || '[]'); } catch (e) { return []; } };
+  const save = a => { try { localStorage.setItem(LS, JSON.stringify(a)); } catch (e) { /* */ } };
+  const setOn = on => { box.classList.toggle('on', on); lbl.textContent = on ? 'Ilmoitus tilattu – peru' : 'Ilmoita, kun jouluajat julkaistaan'; btn.setAttribute('aria-pressed', on); };
+  box.hidden = false; setOn(mine().includes(slug));
+  const tell = (msg) => { small.textContent = msg; };
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      if (box.classList.contains('on')) {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) await fetch('/api/push', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint, slug }) });
+        save(mine().filter(x => x !== slug)); setOn(false); tell('Tilaus peruttu.');
+        reg.active && reg.active.postMessage({ unwatch: slug });
+      } else {
+        if (await Notification.requestPermission() !== 'granted') { tell('Ilmoitukset on estetty selaimen asetuksista.'); return; }
+        const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+        const r = await fetch('/api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint, slug }) });
+        if (!r.ok) throw new Error('push ' + r.status);
+        (reg.active || navigator.serviceWorker.controller) && (reg.active || navigator.serviceWorker.controller).postMessage({ watch: slug, name });
+        save([...new Set([...mine(), slug])]); setOn(true); tell('Saat yhden ilmoituksen, kun jouluaaton aika julkaistaan.');
+      }
+    } catch (e) { tell('Ilmoituksen tilaus ei onnistunut tällä selaimella.'); }
+    finally { btn.disabled = false; }
+  });
+})();

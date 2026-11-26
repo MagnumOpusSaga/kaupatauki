@@ -11,6 +11,12 @@ import json, re, sys, random, gzip, urllib.request
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 
+# N36: testit eivät saa kasvattaa mittareita (Cloudflare-majakka ja oma /api/e)
+BLOCK = ('**/cdn-cgi/rum*', '**/static.cloudflareinsights.com/**', '**/api/e', '**/api/push*')
+def block_beacons(ctx):
+    for pat in BLOCK: ctx.route(pat, lambda r: r.abort())
+    return ctx
+
 BASE = sys.argv[1].rstrip('/')
 AXE = sys.argv[2] if len(sys.argv) > 2 else None
 TRE = {'latitude': 61.4978, 'longitude': 23.7610}
@@ -45,7 +51,7 @@ with sync_playwright() as p:
     # ---------- 1. käyttäjäpolut ----------
     for dev, vp in (('mobiili', {'width': 390, 'height': 844}), ('desktop', {'width': 1366, 'height': 900})):
         print(f'\n== Käyttäjäpolut: {dev}')
-        ctx = b.new_context(viewport=vp, geolocation=TRE, permissions=['geolocation'], locale='fi-FI', timezone_id='Europe/Helsinki', has_touch=dev == 'mobiili')
+        ctx = block_beacons(b.new_context(viewport=vp, geolocation=TRE, permissions=['geolocation'], locale='fi-FI', timezone_id='Europe/Helsinki', has_touch=dev == 'mobiili'))
         pg = ctx.new_page(); collect(pg, dev)
         # a) etusivu → lähimmät auki → avaa ensimmäinen
         pg.goto(BASE + '/'); pg.click('#nearbtn' if pg.locator('#nearbtn').count() else '#nearme')
@@ -129,7 +135,7 @@ with sync_playwright() as p:
     times = ['2026-11-25T03:00', '2026-11-25T07:55', '2026-11-25T12:00', '2026-11-25T21:30', '2026-11-25T23:59', '2026-11-29T10:00', '2026-12-06T11:00']
     pages = ['/kaupat/tampere/', '/kaupat/helsinki/', '/kaupat/rovaniemi/', '/kaupat/kittila/']
     for t in times:
-        ctx = b.new_context(viewport={'width': 1366, 'height': 900}, timezone_id='Europe/Helsinki'); pg = ctx.new_page()
+        ctx = block_beacons(b.new_context(viewport={'width': 1366, 'height': 900}, timezone_id='Europe/Helsinki')); pg = ctx.new_page()
         pg.clock.install(time=datetime.fromisoformat(t + ':00+02:00')); collect(pg, f'kello {t}')
         d, m = t[:10], int(t[11:13]) * 60 + int(t[14:16])
         n = wrong = 0
@@ -145,7 +151,7 @@ with sync_playwright() as p:
         ctx.close()
     # erikoistapaukset: Alko jouluaattona ("auki klo 13 asti")
     for t, want in (('2026-12-24T12:30', 'auki klo 13 asti'), ('2026-12-24T14:00', 'Suljettu')):
-        ctx = b.new_context(timezone_id='Europe/Helsinki'); pg = ctx.new_page(); pg.clock.install(time=datetime.fromisoformat(t + ':00+02:00'))
+        ctx = block_beacons(b.new_context(timezone_id='Europe/Helsinki')); pg = ctx.new_page(); pg.clock.install(time=datetime.fromisoformat(t + ':00+02:00'))
         pg.goto(BASE + '/kauppa/alko-tampere/')
         txt = pg.inner_text('.statusline') if pg.locator('.statusline').count() else ''
         (ok(f'Alko {t}: "{txt}"') if want.lower() in txt.lower() else bug('alko', f'{t}: odotettiin "{want}", sivulla "{txt}"'))
@@ -155,7 +161,7 @@ with sync_playwright() as p:
     print('\n== Viikkotaulukko vs. selaimen data (otos 60 kauppaa)')
     allst = json.load(urllib.request.urlopen(BASE + '/data/stores.json'))['stores']
     random.seed(7); sample = random.sample(allst, 60)
-    ctx = b.new_context(); pg = ctx.new_page(); mism = 0
+    ctx = block_beacons(b.new_context()); pg = ctx.new_page(); mism = 0
     for r in sample:
         pg.goto(f'{BASE}/kauppa/{r[0]}/')
         data = json.loads(pg.get_attribute('article.store', 'data-s'))
@@ -173,7 +179,7 @@ with sync_playwright() as p:
     # ---------- 4. saavutettavuus + painot ----------
     print('\n== Saavutettavuus (axe) ja sivujen painot')
     axe_src = open(AXE).read() if AXE else None
-    ctx = b.new_context(viewport={'width': 390, 'height': 844}); pg = ctx.new_page()
+    ctx = block_beacons(b.new_context(viewport={'width': 390, 'height': 844})); pg = ctx.new_page()
     for path in ['/', '/kaupat/helsinki/', '/kauppa/prisma-kaleva-tampere/', '/joulu/', '/auki/jouluaattona/tampere/', '/aukiololaki/', '/tarjouslehdet/']:
         resp = pg.goto(BASE + path); html = resp.body()
         kb = len(gzip.compress(html)) / 1024

@@ -10,6 +10,12 @@ def note(where, what): problems.append(f'{where}: {what}')
 PAGES = ['/', '/kaupat/tampere/', '/kaupat/helsinki/', '/auki/jouluaattona/', '/auki/jouluaattona/tampere/', '/auki/itsenaisyyspaivana/oulu/',
          '/alko/jouluaattona/', '/ketju/lidl/', '/ketju/alko/', '/tarjouslehdet/', '/tarjouslehti/k-market/', '/kaupungit/', '/tietoa/', '/tietosuoja/', '/joulu/', '/aukiololaki/']
 import os
+# N36: testit eivät saa kasvattaa mittareita (Cloudflare-majakka ja oma /api/e)
+BLOCK = ('**/cdn-cgi/rum*', '**/static.cloudflareinsights.com/**', '**/api/e', '**/api/push*')
+def block_beacons(ctx):
+    for pat in BLOCK: ctx.route(pat, lambda r: r.abort())
+    return ctx
+
 kaupat = sorted(os.listdir('/tmp/d2/kauppa'))
 PAGES += ['/kauppa/' + k + '/' for k in random.sample(kaupat, 25)]
 PAGES += ['/kauppa/' + k + '/' for k in kaupat if k.startswith(('prisma-hameenkatu', 'lidl-tampere-hallituskatu', 'alko-tampere-sokos', 'k-citymarket-helsinki-ruoholahti'))]
@@ -43,7 +49,7 @@ def check_page(page, path, label):
 with sync_playwright() as p:
     b = p.chromium.launch()
     for label, vp in (('mobiili', {'width': 390, 'height': 844}), ('desktop', {'width': 1280, 'height': 900})):
-        ctx = b.new_context(viewport=vp, locale='fi-FI', timezone_id='Europe/Helsinki', geolocation={'latitude': 61.4978, 'longitude': 23.761}, permissions=['geolocation'], is_mobile=label == 'mobiili', has_touch=label == 'mobiili')
+        ctx = block_beacons(b.new_context(viewport=vp, locale='fi-FI', timezone_id='Europe/Helsinki', geolocation={'latitude': 61.4978, 'longitude': 23.761}, permissions=['geolocation'], is_mobile=label == 'mobiili', has_touch=label == 'mobiili'))
         for path in PAGES:
             page = ctx.new_page(); check_page(page, path, label); page.close()
         # vuorovaikutus

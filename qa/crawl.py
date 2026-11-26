@@ -2,6 +2,12 @@
 # Käyttö: python3 -I qa/crawl.py /tmp/d2  → tulostaa virheet ja kirjoittaa qa/external_links.json
 import sys, os, re, json, collections, html
 from html.parser import HTMLParser
+# N36: testit eivät saa kasvattaa mittareita (Cloudflare-majakka ja oma /api/e)
+BLOCK = ('**/cdn-cgi/rum*', '**/static.cloudflareinsights.com/**', '**/api/e', '**/api/push*')
+def block_beacons(ctx):
+    for pat in BLOCK: ctx.route(pat, lambda r: r.abort())
+    return ctx
+
 
 ROOT = sys.argv[1]
 ORIGIN = 'https://kaupatauki.fi'

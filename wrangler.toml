@@ -1,0 +1,12 @@
+name = "kaupatauki"
+pages_build_output_dir = "site/dist"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kaupatauki"
+database_id = "74dde1e8-9743-4470-b275-542958d26ba7"
+
+[vars]
+VAPID_PUBLIC = "BDfQHDDPL4vNMBG_oAp1haOPi9jc253HribCJrubVmy_By7A7_i5I3CVoK0C5O6YpCfME5t64BQPjRtecebDVOA"
+VAPID_SUB = "info@kaupatauki.fi"

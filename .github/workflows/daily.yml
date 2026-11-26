@@ -1,8 +1,11 @@
 name: Daily update
 on:
-  schedule: [{ cron: '23 2 * * *' }]   # ~04.23 Suomen aikaa (talvella)
+  schedule:
+    - cron: '23 2 * * *'            # ~04.23 Suomen aikaa (talvella)
+    - cron: '23 10,15 * 11,12 *'    # marras–joulukuu myös ~12.23 ja ~17.23: ketjujen jouluajat samana päivänä (K2-A)
   workflow_dispatch: {}
 concurrency: { group: daily, cancel-in-progress: false }
+permissions: { contents: read, issues: write }
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,8 +19,21 @@ jobs:
       - run: pip install shapely
       - run: cd site && npm ci
       - run: sh scripts/fetch_all.sh
+      - name: Health (pysäyttää julkaisun, jos lähde romahtaa)
+        id: health
+        run: python3 -I scripts/health.py data/stores.json site/dist "$(TZ=Europe/Helsinki date +%F)"
       - name: Deploy
         run: npx -y wrangler@3 pages deploy site/dist --project-name kaupatauki --branch main --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 040aa50827cdfb7dc725e8bc0600c6ca
+      - name: Jouluaikojen ilmoitukset tilaajille (K2-B)
+        run: curl -fsS -X POST https://kaupatauki.fi/api/push-run || true
+      - name: Hälytys GitHub-issueksi
+        if: always() && (steps.health.outputs.alert != '' || failure())
+        env: { GH_TOKEN: '${{ github.token }}', ALERT: "${{ steps.health.outputs.alert || '❌ Aamuajo epäonnistui ennen julkaisua – vanha sivusto on yhä näkyvissä. Katso Actions-loki.' }}" }
+        run: |
+          T="Kaupat auki: aamuajon hälytys $(TZ=Europe/Helsinki date +%F)"
+          N=$(gh issue list --state open --label halytys --search "$T in:title" --json number -q '.[0].number' || true)
+          gh label create halytys --color B60205 --force >/dev/null 2>&1 || true
+          if [ -n "$N" ]; then gh issue comment "$N" --body "$ALERT"; else gh issue create --title "$T" --label halytys --body "$ALERT"; fi

@@ -116,6 +116,8 @@ const PARK_CITIES = new Set(['Helsinki', 'Tampere']);
 const XMAS_NAV = ['11', '12'].includes(TODAY.slice(5, 7)) || TODAY.slice(5) <= '01-06';
 function layout({ title, desc, canonical, body, jsonld = [], extraHead = '', ads = true, wide = false }) {
   const noindex = CUR.index === false; if (noindex) ads = false; // spämmisuoja: ei mainoksia sivulle ilman omaa dataa
+  // K2-C mittaus: sivutyyppi ja onko pyhäaika vahvistettu (kauppa: tärkein tuleva pyhä; pyhäsivut: portin datakynnys)
+  const pv = CUR.v ?? (/^(pyha|pyhaKunta|alkoPyha)$/.test(CUR.type || '') ? +(CUR.index !== false) : null);
   const robots = SITE.preview ? '<meta name="robots" content="noindex,nofollow">' : noindex ? '<meta name="robots" content="noindex,follow">' : '';
   return `<!doctype html><html lang="fi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -125,7 +127,7 @@ function layout({ title, desc, canonical, body, jsonld = [], extraHead = '', ads
 <link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/icon-96.png" type="image/png" sizes="96x96"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0b7a4b">
 <link rel="stylesheet" href="/style.css?v=${SITE.version}">${SITE.bingVerify ? `<meta name="msvalidate.01" content="${esc(SITE.bingVerify)}">` : ''}${SITE.adsenseClient ? `<meta name="google-adsense-account" content="${esc(SITE.adsenseClient)}">` : ''}${ADS && ads ? `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${esc(SITE.adsenseClient)}" crossorigin="anonymous"></script>` : ''}
 ${jsonld.map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`).join('')}${extraHead}
-</head><body>
+</head><body data-pt="${esc(CUR.type || 'sisalto')}"${pv != null ? ` data-v="${pv}"` : ''}>
 ${SITE.preview ? '<div class="preview">Esikatselu – sivusto ei ole vielä julkinen eikä hakukoneissa.</div>' : ''}
 <header class="top"><a class="logo" href="/"><img src="/favicon.svg" alt="" width="28" height="28">Kaupat auki</a>
 <nav>${XMAS_NAV ? `<a href="/joulu/" class="xm">${ICON.snow}Joulu</a>` : `<a href="/auki/${HOL.find(h => h.top)?.slug || HOL[0].slug}/">${esc(HOL.find(h => h.top)?.name || HOL[0].name)}</a>`}<a href="/tarjouslehdet/">Tarjouslehdet</a><a href="/kaupungit/">Kaupungit</a></nav></header>
@@ -156,6 +158,7 @@ const ICON = {
   x: svgI('<path d="M18 6L6 18M6 6l12 12"/>'), search: svgI('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>'),
   nav: svgI('<path d="M3 11l18-8-8 18-2-8-8-2z"/>'), cal: svgI('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
   chev: svgI('<path d="M9 6l6 6-6 6"/>'), shield: svgI('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>'),
+  bell: svgI('<path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"/><path d="M10 21h4"/>'),
   paper: svgI('<path d="M6 3h9l5 5v13H6z"/><path d="M14 3v6h6M9 13h7M9 17h5"/>'),
   info: svgI('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),
   map: svgI('<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>'),
@@ -167,6 +170,10 @@ const chainBadge = s => { const g = CB_GROUP(s.chain); const [t, c] = g || [(s.n
 // Kartta: puhelimella napautuksella, tietokoneella aina (app.js)
 const mapBox = (list, tall) => `<div class="mapbox${tall ? ' tall' : ''}" id="map" data-list="${list}" hidden><p class="maphint">Kartta ladataan…</p></div>`;
 const mapBtn = `<button type="button" class="chip mapbtn" aria-controls="map" aria-expanded="false">${ICON.map}<span>Näytä kartalla</span></button>`;
+// K2-B paluukanava: selainilmoitus, kun kaupan jouluaatto julkaistaan (vain kaupat, joilla on virallinen lähde)
+const XMAS_EVE = HOL.find(h => h.slug === 'jouluaattona');
+const notifyBox = s => (s.src.official && s.chain !== 'Alko' && XMAS_NAV && XMAS_EVE && TODAY <= XMAS_EVE.iso && s.sched[XMAS_EVE.iso]?.k === 'u')
+  ? `<div class="notify" data-slug="${esc(s.slug)}" data-k="${esc(SITE.vapidPublic || '')}" hidden><button type="button" class="btn ghost">${ICON.bell}<span>Ilmoita, kun jouluajat julkaistaan</span></button><small>Yksi selainilmoitus, kun ${esc(s.src.name)} julkaisee tämän kaupan jouluaaton ajan. Ei sähköpostia eikä kirjautumista.</small></div>` : '';
 const isXmas = slug => XMAS_NAV && !!XMAS_MD[slug];
 // Aikajana (B): akseli klo 6–24
 const AX0 = 6, AX1 = 24;
@@ -279,7 +286,7 @@ for (const s of allStores) {
   const sh = HOL.find(h => h.top) || HOL[0], shv = s.sched[sh.iso];
   const shTxt = shv.k !== 'u' ? `${dayText(shv)} · vahvistettu` : (s.src.official ? (sh.slug.match(/joulu|tapani|uudenvuoden/) ? 'ajat julkaistaan yleensä joulukuun alussa' : 'ei vielä julkaistu') : 'ei vahvistettua tietoa');
   const holStrip = `<a class="strip${isXmas(sh.slug) ? ' xmas' : ''}" href="${s.chain === 'Alko' ? `/alko/${sh.slug}/#${slugify(s.kunta)}` : `/auki/${sh.slug}/${slugify(s.kunta)}/`}">${ICON.cal}<span><b>${esc(sh.name)} ${WD_FI[wdOf(sh.iso)]} ${fiDate(sh.iso)}</b> · ${esc(shTxt)}</span>${ICON.chev}</a>`;
-  gateMeta('kauppa', hasHours(s), storeSig(s));
+  gateMeta('kauppa', hasHours(s), storeSig(s)); CUR.v = +(shv.k !== 'u');
   put(`/kauppa/${s.slug}/`, layout({
     title: `${s.name} aukioloajat${s.kunta && !s.name.includes(s.kunta) ? ' ' + s.kunta : ''}${DUP_NAME.has(s.name + '|' + s.kunta) && s.street ? ', ' + s.street : ''} | Kaupat auki`,
     desc: `${s.name}, ${[s.street, s.postname].filter(Boolean).join(', ')}: aukioloajat tänään, juhlapyhien poikkeusajat (${nextHol.name.toLowerCase()} ${fiDate(nextHol.iso)})${s.flyer ? ' ja linkki tarjouslehteen' : ''}.`,
@@ -294,7 +301,7 @@ for (const s of allStores) {
 <div class="acts2"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}" rel="noopener" target="_blank">${ICON.nav}Reitti</a>${s.flyer ? `<a class="btn ghost" href="${esc(s.flyer.url)}" rel="noopener" target="_blank" title="${s.flyer.kind === 'store-offers' ? 'Kaupan tarjoukset S-kaupat.fi:ssä' : s.flyer.kind === 'store' ? 'Tämän kaupan tarjouslehti k-ruoka.fi:ssä' : esc(s.chain) + '-tarjouslehti'}">${ICON.paper}${s.flyer.kind === 'store-offers' ? 'Tarjoukset' : 'Tarjouslehti'}</a>` : s.chain === 'Alko' && s.url ? `<a class="btn ghost" href="${esc(s.url)}" rel="noopener" target="_blank">${ICON.paper}Alko.fi</a>` : `<a class="btn ghost" href="#viikko">${ICON.cal}Viikon ajat</a>`}</div>
 ${PARK_CITIES.has(s.kunta) ? `<p class="park"><a href="https://parkpenny.com/?city=${s.kunta.toLowerCase()}&amp;lat=${s.lat.toFixed(5)}&amp;lon=${s.lon.toFixed(5)}&amp;q=${encodeURIComponent(s.name)}&amp;dur=60" rel="noopener" target="_blank"><span class="pbadge" aria-hidden="true">P</span>Pysäköinti lähellä – hinnat Parkpennyssä ↗</a></p>` : ''}
 </section>
-${holStrip}
+${holStrip}${notifyBox(s)}
 <div class="tables"><section><h2 id="viikko">Aukioloajat tällä viikolla</h2><table class="hours">${week}</table></section>
 <section><h2>Juhlapyhät ja poikkeusajat</h2><table class="hours hol">${holRows}</table></section></div>
 <p class="note">${s.chain === 'Alko' ? `Juhlapyhien ajat ovat Alkon itse tiedottamia (${(s.facts || []).map(f => `<a href="${esc(f.url)}" rel="noopener">${esc(f.name)}</a>`).join(', ')}). Myymäläkohtaiset arkiaukioloajat ovat OpenStreetMapista eivätkä Alkon vahvistamia – tarkista ne Alkon sivulta.` : s.src.official ? 'Poikkeusajat näytetään heti, kun kauppa julkaisee ne. Joulun ajat julkaistaan yleensä joulukuun alussa.' : 'Tälle kaupalle ei ole vielä virallista tietolähdettä.'}</p>
@@ -653,6 +660,8 @@ put('/tietosuoja/', layout({
 <h2>Mitä tietoja käsittelemme</h2>${ADS ? `<p>Palvelussa ei ole kirjautumista. Emme kerää nimiä, sähköpostiosoitteita emmekä IP-osoitteita omaan käyttöömme.</p>
 <p><b>Mainokset ja evästeet:</b> palvelun kulut katetaan Google AdSense -mainoksilla. Google ja sen kumppanit voivat käyttää evästeitä ja laitetunnisteita mainosten näyttämiseen, mittaamiseen ja – suostumuksellasi – mainosten kohdentamiseen. Suostumus kysytään Googlen sertifioidulla suostumusikkunalla (IAB TCF) ensimmäisellä käynnillä; voit kieltäytyä, jolloin näytetään vain rajoitettuja, ei-personoituja mainoksia. Voit muuttaa valintaasi milloin tahansa sivun alareunan linkistä "Evästeasetukset". Lisätietoja: <a href="https://policies.google.com/technologies/partner-sites?hl=fi" rel="noopener">Miten Google käyttää tietoja kumppanisivustoilla</a>.</p>` : `<p>Palvelu ei käytä evästeitä, kirjautumista eikä mainosseurantaa. Emme kerää nimiä, sähköpostiosoitteita emmekä IP-osoitteita omaan käyttöömme.</p>`}
 <p><b>Kartta:</b> tietokoneella kauppasivujen kartta ladataan OpenFreeMap-palvelusta (tiles.openfreemap.org, kartta-aineisto © OpenMapTiles ja OpenStreetMapin tekijät). Palvelu ei käytä evästeitä eikä tunnuksia, mutta karttakuvia ladattaessa selaimesi IP-osoite välittyy sille kuten mille tahansa verkkopalvelulle. Puhelimella karttaa ei ladata.</p>
+<p><b>Omat käyttölaskurit:</b> sivu lähettää palvelimellemme lyhyen merkinnän sivun latauksesta (sivun tyyppi, esim. "kauppasivu", ja onko pyhäaika vahvistettu), napautuksista reitti-, tarjouslehti-, Alko- ja Parkpenny-linkkeihin sekä siitä, poistuiko kävijä alle 10 sekunnissa. Tallennamme vain päiväkohtaiset yhteismäärät (esim. "26.11. kauppasivu 1 520"). Emme tallenna IP-osoitetta, evästeitä, laitetunnistetta emmekä mitään, millä yksittäisen kävijän voisi tunnistaa tai yhdistää käynnit toisiinsa.</p>
+<p><b>Jouluaikojen ilmoitus:</b> jos painat kauppasivulla "Ilmoita, kun jouluajat julkaistaan" ja sallit ilmoitukset, tallennamme selaimesi ilmoitusosoitteen (selaimen valmistajan push-palvelun antama tunniste) ja kaupan nimen. Ilmoitus lähetetään kerran, kun kauppa julkaisee jouluaaton aukioloajan, ja tieto poistetaan heti sen jälkeen – viimeistään jouluaattona. Voit perua tilauksen samasta painikkeesta. Emme kysy nimeä emmekä sähköpostia.</p>
 <p><b>Kävijätilastot:</b> käytämme Cloudflare Web Analyticsia, joka laskee sivujen latauksia ja sivun latausnopeutta ilman evästeitä ja ilman yksittäisen kävijän tunnistamista tai seurantaa sivustolta toiselle. Näemme vain koostetut luvut (esim. sivulataukset, maa, selain).</p>
 <p><b>Sijainti:</b> jos painat "Näytä lähimmät", selain kysyy luvan sijaintiisi. Sijainti käsitellään vain laitteellasi lähimpien kauppojen järjestämiseen, eikä sitä lähetetä meille.</p>
 <p><b>Palvelin:</b> sivusto toimii Cloudflaren palvelussa (Cloudflare, Inc.), joka käsittelee teknisiä lokitietoja (esim. IP-osoite) palvelun toimittamiseksi ja suojaamiseksi Cloudflaren omien ehtojen mukaisesti.</p>
@@ -687,6 +696,8 @@ chunks.forEach((c, i) => fs.writeFileSync(path.join(DIST, `sitemap-${i + 1}.xml`
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${chunks.map((c, i) => `<sitemap><loc>${url(`/sitemap-${i + 1}.xml`)}</loc><lastmod>${c.map(p => LASTMOD[p][1]).sort().pop()}</lastmod></sitemap>`).join('')}</sitemapindex>`);
 if (SITE.adsenseClient) fs.writeFileSync(path.join(DIST, 'ads.txt'), `google.com, ${SITE.adsenseClient.replace('ca-', '')}, DIRECT, f08c47fec0942fa0\n`);
 fs.writeFileSync(path.join(DIST, 'robots.txt'), SITE.preview ? 'User-agent: *\nDisallow: /\n' : `User-agent: *\nAllow: /\n\nSitemap: ${url('/sitemap.xml')}\n`);
+if (XMAS_EVE) fs.writeFileSync(path.join(DIST, 'data/xmas-ready.json'), JSON.stringify({ until: XMAS_EVE.iso, stores: Object.fromEntries(stores.filter(s => s.src.official && s.chain !== 'Alko' && s.sched[XMAS_EVE.iso] && s.sched[XMAS_EVE.iso].k !== 'u').map(s => [s.slug, `${s.name}: jouluaatto ${dayText(s.sched[XMAS_EVE.iso])}`])) }));
+fs.writeFileSync(path.join(DIST, 'data/holidays.json'), JSON.stringify(HOL.map(h => ({ iso: h.iso, slug: h.slug, name: h.name }))));
 fs.writeFileSync(path.join(DIST, 'data/gate.json'), JSON.stringify({ built: TODAY, rules: GATE_RULES, counts: GATE }, null, 1));
 console.log(JSON.stringify({ gate: GATE }));
 console.log(JSON.stringify({ today: TODAY, stores: stores.length, kunnat: kunnat.length, pages: pages.length, sitemap: sitemapUrls.length, ohErrors, holidays: HOL.slice(0, 4).map(h => h.slug + ' ' + h.iso) }));

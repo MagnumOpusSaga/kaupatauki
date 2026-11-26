@@ -426,3 +426,8 @@ h1.xm{display:flex;align-items:flex-start;gap:10px}h1.xm .ic{width:.8em;height:.
 @media (min-width:1000px){.loc .loctx{display:none}.loc .ic{width:22px;height:22px}}
 /* v12: vahvistamattomat pyhät yhdellä rivillä */
 .hours td.holbare{font-weight:400;color:var(--mut);font-size:14px;line-height:1.6}.hours td.holbare a{color:inherit}
+/* v13: jouluaikojen ilmoitus (K2-B) */
+.notify{margin:.6rem 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .8rem}
+.notify .btn svg{width:18px;height:18px;margin-right:.35rem;vertical-align:-3px}
+.notify small{color:var(--muted,#5b6470);flex:1 1 16rem;font-size:.85rem;line-height:1.35}
+.notify.on .btn{border-color:var(--xm,#b8322a);color:var(--xm,#b8322a)}
