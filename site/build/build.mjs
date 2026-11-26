@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import { upcoming, iso, add } from './holidays.mjs';
 const require = createRequire(import.meta.url);
 const OH = require('opening_hours');
@@ -114,7 +115,8 @@ const adUnit = (slot, cls = 'adbox') => ADS && slot ? `<aside class="${cls}" ari
 const PARK_CITIES = new Set(['Helsinki', 'Tampere']);
 const XMAS_NAV = ['11', '12'].includes(TODAY.slice(5, 7)) || TODAY.slice(5) <= '01-06';
 function layout({ title, desc, canonical, body, jsonld = [], extraHead = '', ads = true, wide = false }) {
-  const robots = SITE.preview ? '<meta name="robots" content="noindex,nofollow">' : '';
+  const noindex = CUR.index === false; if (noindex) ads = false; // spämmisuoja: ei mainoksia sivulle ilman omaa dataa
+  const robots = SITE.preview ? '<meta name="robots" content="noindex,nofollow">' : noindex ? '<meta name="robots" content="noindex,follow">' : '';
   return `<!doctype html><html lang="fi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><meta name="description" content="${esc(desc)}">${robots}
@@ -196,7 +198,36 @@ const tlList = (arr, date, opts = {}) => `${tlHead(opts.label || 'Järjestys: au
 
 // ---------- sivut ----------
 const pages = []; // {path, html}
-const put = (p, html) => pages.push({ p, html });
+// ---------- Indeksointiportti (spämmisuoja, Branun pysyvä sääntö 25.11.2026, claude/kirjasto/10-spamsuoja.md) ----------
+// Indeksiin ja sivukarttaan vain sivut, joilla on omaa dataa. Jokaisella sivutyypillä oma datakynnys.
+// Kynnyksen alittava sivu on olemassa käyttäjille, mutta saa noindexin, ei ole sivukartassa eikä siinä ole mainoksia.
+const GATE_RULES = {
+  kauppa: 'kaupan aukioloajat tiedossa kaikille tavallisille päiville seuraavat 2 viikkoa (kauppa/ketju tai OpenStreetMap)',
+  kunta: 'vähintään 3 ruokakauppaa, joiden aukioloajat tiedossa',
+  pyha: 'vähintään 20 kauppaa tai Alkoa on julkaissut tämän päivän ajan',
+  pyhaKunta: 'vähintään 3 kunnan ruokakauppaa on julkaissut tämän päivän ajan',
+  alkoPyha: 'vähintään 20 Alkoa, joille Alko on julkaissut tämän päivän ajan',
+  ketju: 'oikea ketju ja vähintään 5 kauppaa, joiden aukioloajat tiedossa',
+  lehti: 'vähintään 20 kauppakohtaista tarjouslehtilinkkiä (muuten sama kuin /tarjouslehdet/)',
+  sisalto: 'toimituksellinen sivu, jolla omaa sisältöä (etusivu, joulu, aukiololaki, kunnat, tarjouslehdet, tietoa, tietosuoja)',
+};
+const GATE = {}; const META = new Map();
+const sig = x => createHash('sha1').update(typeof x === 'string' ? x : JSON.stringify(x)).digest('hex').slice(0, 12);
+let CUR = {}; // seuraavan put-kutsun portti: { index, sig, type }
+const gateMeta = (type, ok, dataSig) => { const g = (GATE[type] ||= { index: 0, noindex: 0 }); g[ok ? 'index' : 'noindex']++; return (CUR = { index: !!ok, sig: dataSig, type }); };
+const put = (p, html) => {
+  pages.push({ p, html });
+  META.set(p, { index: CUR.index !== false, type: CUR.type || 'sisalto', sig: CUR.sig || sig(html.split(BUILD_STAMP).join('')) });
+  if (!CUR.type) { const g = (GATE.sisalto ||= { index: 0, noindex: 0 }); if (!p.endsWith('.html')) g.index++; }
+  CUR = {};
+};
+// Omaa dataa: kaupan ajat tiedossa kaikille tavallisille (ei-pyhä) päiville seuraavat 14 päivää
+const REG_DAYS = dates.slice(0, 14).filter(d => !HOL.some(h => h.iso === d));
+const hasHours = s => REG_DAYS.every(d => s.sched[d] && s.sched[d].k !== 'u');
+// Datan tunniste: muuttuu vain, kun kaupan tiedot muuttuvat (ei päivän vaihtuessa) → rehellinen lastmod
+const storeSig = s => sig([s.name, s.street, s.postcode, s.week || null, s.oh || null, s.exceptions || [], s.flyer?.url || null, s.url || null]);
+const daySig = (arr, d) => sig([d, arr.map(s => [s.slug, s.sched[d]?.k === 'u' ? null : s.sched[d]])]);
+const NOT_CHAINS = new Set(['Lähikauppa', 'Muu ruokakauppa']);
 
 const alkoByKunta = {}; for (const s of alkos) (alkoByKunta[s.kunta] ||= []).push(s);
 const alkoStrip = (k, d, hol) => {
@@ -218,7 +249,9 @@ for (const s of allStores) {
     const v = s.sched[d];
     return `<tr data-d="${d}"${d === TODAY ? ' class="today"' : ''}><th>${WD_FI_LONG[wdOf(d)]} ${fiDate(d)}${HOL_BY_DATE[d] ? ` (${esc(HOL_BY_DATE[d].name.toLowerCase())})` : ''}</th><td>${v.k === 'u' ? `<span class="unk">${esc(dayText(v))}</span>` : esc(dayText(v))}${v.hint ? ` <small>(${esc(v.hintSrc || 'OpenStreetMap')} näyttää nyt: ${esc(v.hint.length ? fmtR(v.hint) : 'suljettu')})</small>` : ''}${v.k === 'x' ? ' <em>poikkeusaika</em>' : ''}${v.note ? ` <small>${esc(v.note)}</small>` : ''}</td></tr>`;
   }).join('');
-  const holRows = HOL.slice(0, 9).map(h => {
+  // Pyhät, joista ei ole mitään tietoa, kootaan yhdelle riville (sama tieto, ei toistoa: spämmisuoja sääntö 3)
+  const holBare = HOL.slice(0, 9).filter(h => { const v = s.sched[h.iso]; return v.k === 'u' && !v.hint && !v.note; });
+  const holRows = HOL.slice(0, 9).filter(h => !holBare.includes(h)).map(h => {
     const v = s.sched[h.iso];
     let txt;
     if (v.k === 'u') {
@@ -227,7 +260,7 @@ for (const s of allStores) {
       if (v.note) txt += ` <small>${esc(v.note)}</small>`;
     } else txt = esc(dayText(v)) + (v.k === 'x' ? ' <em class="ok">vahvistettu</em>' : '') + (v.note ? ` <small>${esc(v.note)}</small>` : '');
     return `<tr><th><a href="/auki/${h.slug}/${slugify(s.kunta)}/">${esc(h.name)}</a> ${WD_FI[wdOf(h.iso)]} ${fiDate(h.iso)}</th><td>${txt}</td></tr>`;
-  }).join('');
+  }).join('') + (holBare.length ? `<tr><th>${s.src.official ? 'Ei vielä julkaistu' : 'Ei vahvistettua tietoa'}</th><td class="holbare">${holBare.map(h => `<a href="/auki/${h.slug}/${slugify(s.kunta)}/">${esc(h.name)} ${fiDate(h.iso)}</a>`).join(', ')}</td></tr>` : '');
   const near = (s.chain === 'Alko' ? alkos : stores).filter(o => o !== s && o.kunta === s.kunta).map(o => [o, (o.lat - s.lat) ** 2 + ((o.lon - s.lon) * Math.cos(s.lat * Math.PI / 180)) ** 2]).sort((a, b) => a[1] - b[1]).slice(0, 6).map(x => x[0]);
   const flyer = s.flyer ? `<a class="btn" href="${esc(s.flyer.url)}" rel="noopener" target="_blank">${s.flyer.kind === 'store-offers' ? 'Kaupan tarjoukset (S-kaupat.fi)' : s.flyer.kind === 'store' ? 'Tämän kaupan tarjouslehti (k-ruoka.fi)' : `${esc(s.chain)}-tarjouslehti`} ↗</a>` : '';
   const srcTxt = s.src.official
@@ -246,6 +279,7 @@ for (const s of allStores) {
   const sh = HOL.find(h => h.top) || HOL[0], shv = s.sched[sh.iso];
   const shTxt = shv.k !== 'u' ? `${dayText(shv)} · vahvistettu` : (s.src.official ? (sh.slug.match(/joulu|tapani|uudenvuoden/) ? 'ajat julkaistaan yleensä joulukuun alussa' : 'ei vielä julkaistu') : 'ei vahvistettua tietoa');
   const holStrip = `<a class="strip${isXmas(sh.slug) ? ' xmas' : ''}" href="${s.chain === 'Alko' ? `/alko/${sh.slug}/#${slugify(s.kunta)}` : `/auki/${sh.slug}/${slugify(s.kunta)}/`}">${ICON.cal}<span><b>${esc(sh.name)} ${WD_FI[wdOf(sh.iso)]} ${fiDate(sh.iso)}</b> · ${esc(shTxt)}</span>${ICON.chev}</a>`;
+  gateMeta('kauppa', hasHours(s), storeSig(s));
   put(`/kauppa/${s.slug}/`, layout({
     title: `${s.name} aukioloajat${s.kunta && !s.name.includes(s.kunta) ? ' ' + s.kunta : ''}${DUP_NAME.has(s.name + '|' + s.kunta) && s.street ? ', ' + s.street : ''} | Kaupat auki`,
     desc: `${s.name}, ${[s.street, s.postname].filter(Boolean).join(', ')}: aukioloajat tänään, juhlapyhien poikkeusajat (${nextHol.name.toLowerCase()} ${fiDate(nextHol.iso)})${s.flyer ? ' ja linkki tarjouslehteen' : ''}.`,
@@ -279,6 +313,7 @@ for (const k of kunnat) {
   const ks = slugify(k), arr = holSort(byKunta[k], TODAY);
   const cr = [['Kaupat auki', '/'], [k, `/kaupat/${ks}/`]];
   const chainsHere = [...new Set(arr.map(s => s.chain))];
+  gateMeta('kunta', byKunta[k].filter(hasHours).length >= 3, sig(byKunta[k].map(storeSig)));
   put(`/kaupat/${ks}/`, layout({
     title: `Kaupat auki tänään – ${k} | Kaupungin ruokakaupat ja aukioloajat`,
     desc: `${k}: ${arr.length} ruokakauppaa (${chainsHere.slice(0, 5).join(', ')}). Mitkä kaupat ovat auki nyt, aukioloajat tänään ja juhlapyhinä.`,
@@ -288,7 +323,7 @@ for (const k of kunnat) {
 <div class="tabs"><span class="tab on">Tänään ${WD_FI[wdOf(TODAY)]} ${fiDate(TODAY)}</span>${HOL.slice(0, 5).map(h => `<a class="tab" href="/auki/${h.slug}/${ks}/">${esc(h.name)} ${fiDate(h.iso)}</a>`).join('')}</div>
 <div class="chips"><button type="button" class="chip" id="onlyopen" aria-pressed="false">Vain auki nyt</button><button type="button" class="chip" id="sortnear" aria-pressed="false">Lähimmät ensin</button>${mapBtn}</div>
 <div class="split"><div class="split-list">${alkoStrip(k, TODAY, null)}
-${tlList(arr, TODAY, { ad: true })}</div><aside class="split-map" aria-label="Kartta">${mapBox('list', true)}</aside></div>`
+${tlList(arr, TODAY, { ad: CUR.index })}</div><aside class="split-map" aria-label="Kartta">${mapBox('list', true)}</aside></div>`
   }));
 }
 // Kaupunkiluettelo
@@ -323,6 +358,7 @@ for (const h of HOL) {
     const common = sample.length ? Object.entries(sample.reduce((m, v) => (m[dayText(v)] = (m[dayText(v)] || 0) + 1, m), {})).sort((a, b) => b[1] - a[1])[0][0] : null;
     return `<tr><th><a href="${c === 'Alko' ? `/alko/${h.slug}/` : `/ketju/${chainSlug(c)}/`}">${esc(c)}</a></th><td>${common ? `yleisimmin ${esc(common)} <small>(${sample.length}/${chains[c].length} kauppaa julkaissut)</small>` : '<span class="unk">ei vielä julkaistu</span>'}</td></tr>`;
   }).join('');
+  gateMeta('pyha', allStores.filter(s => s.sched[d] && s.sched[d].k !== 'u').length >= 20, daySig(allStores, d));
   put(`/auki/${h.slug}/`, layout({
     title: `Kaupat auki ${h.when} ${h.year} (${wd} ${fiDate(d)}) | Kaupat auki`,
     desc: `Mitkä kaupat ovat auki ${h.when} ${fiDateY(d)}? Prisman, K-Citymarketin, Lidlin, S-marketin ja K-Marketin aukioloajat kunnittain virallisista lähteistä.`,
@@ -339,6 +375,7 @@ ${XMAS_MD[h.slug] ? `<p><a href="/joulu/">Kaikki joulun ja uudenvuoden aukioloaj
     const ks = slugify(k), arr = holSort(byKunta[k], d), s3 = holStats(arr, d);
     const cr2 = [['Kaupat auki', '/'], [`${h.name} ${h.year}`, `/auki/${h.slug}/`], [k, `/auki/${h.slug}/${ks}/`]];
     const pub = s3.open + s3.closed;
+    gateMeta('pyhaKunta', pub >= 3, daySig(arr, d));
     put(`/auki/${h.slug}/${ks}/`, layout({
       title: `Kaupat auki ${h.when} – ${k} ${h.year} | Kaupat auki`,
       desc: `${k}: mitkä kaupat ovat auki ${h.when} ${fiDateY(d)}? ${arr.length} ruokakaupan aukioloajat${pub ? ` – ${s3.open} kauppaa auki` : ''}. Päivittyy, kun kaupat julkaisevat poikkeusajat.`,
@@ -348,7 +385,7 @@ ${XMAS_MD[h.slug] ? `<p><a href="/joulu/">Kaikki joulun ja uudenvuoden aukioloaj
 <div class="tabs"><a class="tab" href="/kaupat/${ks}/">Tänään</a>${HOL.slice(0, 5).map(x => x === h ? `<span class="tab on">${esc(x.name)} ${fiDate(x.iso)}</span>` : `<a class="tab" href="/auki/${x.slug}/${ks}/">${esc(x.name)} ${fiDate(x.iso)}</a>`).join('')}</div>
 <div class="chips maponly">${mapBtn}</div>
 <div class="split"><div class="split-list">${alkoStrip(k, d, h)}
-${tlList(arr, d, { holiday: true, ad: true, label: `${h.name} ${fiDate(d)} · auki pisimpään ensin` })}</div><aside class="split-map" aria-label="Kartta">${mapBox('list', true)}</aside></div>
+${tlList(arr, d, { holiday: true, ad: CUR.index, label: `${h.name} ${fiDate(d)} · auki pisimpään ensin` })}</div><aside class="split-map" aria-label="Kartta">${mapBox('list', true)}</aside></div>
 <p class="note">Näytämme vain kauppojen itse julkaisemat poikkeusajat. "Ei tietoa" tarkoittaa, ettei kauppa ole vielä julkaissut aikaa tai sille ei ole virallista lähdettä.</p>
 <div class="hols"><a href="/kaupat/${ks}/">${esc(k)}: aukioloajat tänään</a>${HOL.filter(x => x !== h).slice(0, 6).map(x => `<a href="/auki/${x.slug}/${ks}/">${esc(x.name)}</a>`).join('')}</div>`
     }));
@@ -370,6 +407,7 @@ for (const h of HOL) {
     : 'Alko ei ole vielä tiedottanut tämän päivän aukioloista.';
   const cr = [['Kaupat auki', '/'], ['Alko', '/ketju/alko/'], [`${h.name} ${h.year}`, `/alko/${h.slug}/`]];
   const ks = Object.keys(alkoByKunta).sort((a, b) => a.localeCompare(b, 'fi'));
+  gateMeta('alkoPyha', st.open + st.closed >= 20, daySig(alkos, d));
   put(`/alko/${h.slug}/`, layout({
     title: `Alko auki ${h.when} ${h.year} (${WD_FI[wdOf(d)]} ${fiDate(d)}) | Kaupat auki`,
     desc: `Onko Alko auki ${h.when} ${fiDateY(d)}? ${head} Kaikki ${alkos.length} Alkoa kunnittain.`.slice(0, 300),
@@ -530,6 +568,7 @@ for (const c of chainList) {
   const per = {}; for (const s of arr) (per[s.kunta] ||= []).push(s);
   const cr = [['Kaupat auki', '/'], [c, `/ketju/${cs}/`]];
   const official = arr.filter(s => s.src.official).length;
+  gateMeta('ketju', !NOT_CHAINS.has(c) && arr.filter(hasHours).length >= 5, sig(arr.map(storeSig)));
   put(`/ketju/${cs}/`, layout({
     title: `${c} aukioloajat – kaikki ${arr.length} kauppaa | Kaupat auki`,
     desc: `${c}: aukioloajat tänään ja juhlapyhinä kaikissa ${arr.length} kaupassa${info.flyer ? ' sekä linkki tämän viikon tarjouslehteen' : ''}.`,
@@ -562,6 +601,7 @@ for (const [n, sl, u, txt, cl] of FLYER_CHAINS) {
   const arr = sortStores(cl.flatMap(c => chains[c] || []));
   const withStore = arr.filter(s => s.flyer && s.flyer.kind !== 'chain');
   const cr = [['Kaupat auki', '/'], ['Tarjouslehdet', '/tarjouslehdet/'], [n, `/tarjouslehti/${sl}/`]];
+  gateMeta('lehti', withStore.length >= 20, sig([u, txt, withStore.map(s => s.flyer.url)]));
   put(`/tarjouslehti/${sl}/`, layout({
     title: `${n.split(',')[0]} tarjouslehti tällä viikolla | Kaupat auki`,
     desc: `${n}: linkki tämän viikon viralliseen tarjouslehteen${withStore.length ? ` – ${withStore.length} kaupan oma lehti` : ''}. Myös kauppojen aukioloajat.`,
@@ -633,10 +673,20 @@ fs.writeFileSync(path.join(DIST, 'data/stores.json'), JSON.stringify({
   license: 'Sisältää OpenStreetMap-tietoa © OpenStreetMapin tekijät, ODbL 1.0. Lähteet: S-kaupat.fi, Lidl.fi, Tokmanni.fi, Alkon tiedotteet.', built: TODAY,
   stores: allStores.map(s => [s.slug, dispName(s), s.kunta, +s.lat.toFixed(5), +s.lon.toFixed(5), s.street, compact(s, next7), AREAS[s.postcode] || ''])
 }));
-const sitemapUrls = pages.filter(x => !x.p.endsWith('.html')).map(x => x.p);
+// Sivukartta = vain portin läpäisevät sivut. lastmod vaihtuu vain, kun sivun datan tunniste muuttuu (edellinen tila /data/lastmod.json).
+let PREV = {};
+try {
+  PREV = process.env.LASTMOD_PREV ? JSON.parse(fs.readFileSync(process.env.LASTMOD_PREV, 'utf8')) : await (await fetch(`${SITE.origin}/data/lastmod.json`, { signal: AbortSignal.timeout(15000) })).json();
+} catch { PREV = {}; }
+const LASTMOD = {};
+for (const [p, m] of META) { const old = PREV[p]; LASTMOD[p] = old && old[0] === m.sig ? old : [m.sig, TODAY]; }
+fs.writeFileSync(path.join(DIST, 'data/lastmod.json'), JSON.stringify(LASTMOD));
+const sitemapUrls = pages.filter(x => !x.p.endsWith('.html') && META.get(x.p).index).map(x => x.p);
 const chunks = []; for (let i = 0; i < sitemapUrls.length; i += 40000) chunks.push(sitemapUrls.slice(i, i + 40000));
-chunks.forEach((c, i) => fs.writeFileSync(path.join(DIST, `sitemap-${i + 1}.xml`), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${c.map(p => `<url><loc>${url(p)}</loc><lastmod>${TODAY}</lastmod></url>`).join('')}</urlset>`));
-fs.writeFileSync(path.join(DIST, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${chunks.map((_, i) => `<sitemap><loc>${url(`/sitemap-${i + 1}.xml`)}</loc><lastmod>${TODAY}</lastmod></sitemap>`).join('')}</sitemapindex>`);
+chunks.forEach((c, i) => fs.writeFileSync(path.join(DIST, `sitemap-${i + 1}.xml`), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${c.map(p => `<url><loc>${url(p)}</loc><lastmod>${LASTMOD[p][1]}</lastmod></url>`).join('')}</urlset>`));
+fs.writeFileSync(path.join(DIST, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${chunks.map((c, i) => `<sitemap><loc>${url(`/sitemap-${i + 1}.xml`)}</loc><lastmod>${c.map(p => LASTMOD[p][1]).sort().pop()}</lastmod></sitemap>`).join('')}</sitemapindex>`);
 if (SITE.adsenseClient) fs.writeFileSync(path.join(DIST, 'ads.txt'), `google.com, ${SITE.adsenseClient.replace('ca-', '')}, DIRECT, f08c47fec0942fa0\n`);
 fs.writeFileSync(path.join(DIST, 'robots.txt'), SITE.preview ? 'User-agent: *\nDisallow: /\n' : `User-agent: *\nAllow: /\n\nSitemap: ${url('/sitemap.xml')}\n`);
+fs.writeFileSync(path.join(DIST, 'data/gate.json'), JSON.stringify({ built: TODAY, rules: GATE_RULES, counts: GATE }, null, 1));
+console.log(JSON.stringify({ gate: GATE }));
 console.log(JSON.stringify({ today: TODAY, stores: stores.length, kunnat: kunnat.length, pages: pages.length, sitemap: sitemapUrls.length, ohErrors, holidays: HOL.slice(0, 4).map(h => h.slug + ' ' + h.iso) }));
