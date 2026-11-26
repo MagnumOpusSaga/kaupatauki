@@ -8,3 +8,4 @@ raw/tok_all.json
 raw/*.pbf
 raw/osm_tiles/
 *.log
+__pycache__/
